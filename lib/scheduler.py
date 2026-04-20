@@ -7,29 +7,37 @@ from micropython import const
 
 class Message(object):
     pool = []
+    free_stack = []
 
     @classmethod
     def init_pool(cls, size = 100):
+        cls.pool.clear()
+        cls.free_stack.clear()
         for i in range(size):
-            cls.pool.append(Message("", processed = True))
+            m = Message("", processed = True)
+            m._pool_index = i
+            cls.pool.append(m)
+            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        for m in cls.pool:
-            if m.processed and m.replied:
-                m.processed = False
-                m.replied = False
-                return m
+        if not cls.free_stack:
+            return None
+        idx = cls.free_stack.pop()
+        m = cls.pool[idx]
+        m.processed = False
+        m.replied = False
+        return m
 
     @classmethod
     def need_to_reply(cls):
         for m in cls.pool:
             if m.processed and not m.replied:
                 yield m
-            
+
     @classmethod
     def remain(cls):
-        return sum(1 for m in cls.pool if m.processed)
+        return len(cls.free_stack)
 
     def __init__(self, content, sender = None, sender_name = "", receiver = None, processed = False, drop_size = 0, need_reply = False):
         self.load(content, sender, sender_name, receiver, processed, drop_size, need_reply)
@@ -52,86 +60,99 @@ class Message(object):
             self.need_reply = False
             self.replied = False
         else:
-            # del self.content
             self.content = ""
             self.sender = None
-            # del self.sender_name
             self.sender_name = ""
             self.receiver = None
             self.replied = True
+            Message.free_stack.append(self._pool_index)
         self.processed = True
 
 
 class Condition(object):
     pool = []
-    
+    free_stack = []
+
     @classmethod
     def init_pool(cls, size = 100):
+        cls.pool.clear()
+        cls.free_stack.clear()
         for i in range(size):
-            cls.pool.append(Condition(processed = True))
+            c = Condition(processed = True)
+            c._pool_index = i
+            cls.pool.append(c)
+            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        for c in cls.pool:
-            if c.processed:
-                c.resume_at = ticks_ms()
-                c.wait_msg = False
-                c.send_msgs.clear()
-                c.processed = False
-                return c
-        return None
-            
+        if not cls.free_stack:
+            return None
+        idx = cls.free_stack.pop()
+        c = cls.pool[idx]
+        c.resume_at = ticks_ms()
+        c.wait_msg = False
+        c.send_msgs.clear()
+        c.processed = False
+        return c
+
     @classmethod
     def remain(cls):
-        return sum(1 for c in cls.pool if c.processed)
-    
+        return len(cls.free_stack)
+
     def __init__(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
         self.load(code, sleep, send_msgs, wait_msg, processed)
-        
+
     def load(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
         self.code = code
-        self.resume_at = ticks_add(ticks_ms(), sleep) # ms
+        self.resume_at = ticks_add(ticks_ms(), sleep)
         self.send_msgs = send_msgs if send_msgs is not None else []
         self.wait_msg = wait_msg
         self.processed = processed
         return self
-    
+
     def release(self):
         self.code = 0
         self.resume_at = 0
         self.send_msgs.clear()
-        # del self.send_msgs
-        # self.send_msgs = []
         self.wait_msg = False
         self.processed = True
-        
-        
+        # Return to pool using stored index (O(1))
+        Condition.free_stack.append(self._pool_index)
+
+
 class Task(object):
     pool = []
+    free_stack = []
     id_count = 0
 
     @classmethod
     def init_pool(cls, size = 100):
-        for _ in range(size):
-            cls.pool.append(Task(None, "", processed = True))
+        cls.pool.clear()
+        cls.free_stack.clear()
+        for i in range(size):
+            t = Task(None, "", processed = True)
+            t._pool_index = i
+            cls.pool.append(t)
+            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        for t in cls.pool:
-            if t.processed:
-                t.processed = False
-                return t
-        return None
-            
+        if not cls.free_stack:
+            return None
+        idx = cls.free_stack.pop()
+        t = cls.pool[idx]
+        t.processed = False
+        return t
+
     @classmethod
     def remain(cls):
-        return sum(1 for t in cls.pool if t.processed)
-    
+        return len(cls.free_stack)
+
     @classmethod
     def new_id(cls):
         cls.id_count += 1
         return cls.id_count
-    
+
     def __init__(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False):
         self.load(func, name, condition, task_id, args, kwargs, need_to_clean, reset_sys_path, processed)
 
@@ -144,18 +165,19 @@ class Task(object):
         self.msgs = []
         self.msgs_senders = []
         self.func = func(self, name, *args, **kwargs) if func else None
-        self.condition = condition if condition else Condition()
+        self.condition = condition if condition else Condition.get()
         self.need_to_clean = need_to_clean
         self.reset_sys_path = reset_sys_path
         self.processed = processed
         self.cpu_time_ms = 0
         self.cpu_usage = 0
         return self
-        
+
     def set_condition(self, condition):
-        self.condition.release()
+        if self.condition:
+            self.condition.release()
         self.condition = condition
-        
+
     def put_message(self, message):
         if message.drop_size == 0:
             self.msgs.append(message)
@@ -164,9 +186,8 @@ class Task(object):
             self.msgs.append(message)
             self.msgs_senders.append(message.sender)
         else:
-            # print("drop message:", message.content)
             message.release()
-        
+
     def get_message(self, sender = None):
         if not self.msgs:
             return None
@@ -180,7 +201,7 @@ class Task(object):
             return self.msgs.pop(i)
         except:
             return None
-        
+
     def ready(self):
         if ticks_diff(ticks_ms(), self.condition.resume_at) >= 0:
             if self.condition.wait_msg is True:
@@ -191,23 +212,21 @@ class Task(object):
                 return True
         else:
             return False
-        
+
     def clean(self):
-        del self.name
         for m in self.msgs:
             m.release()
         self.msgs.clear()
         self.msgs_senders.clear()
-        # del self.msgs_senders
-        # del self.func
         self.func = None
         if self.condition:
             self.condition.release()
         self.condition = None
         self.need_to_clean.clear()
-        # del self.need_to_clean
         self.reset_sys_path = False
         self.processed = True
+        # Return to pool using stored index (O(1))
+        Task.free_stack.append(self._pool_index)
 
 
 class Scheduler(object):
@@ -228,7 +247,7 @@ class Scheduler(object):
         self.task_sleep_interval = const(100)
         self.need_to_sort = True
         self.stop = False
-        
+
     def task_sort(self, task):
         if task.condition.wait_msg:
             return -1000000 if len(task.msgs) > 0 else 1000000
@@ -244,25 +263,22 @@ class Scheduler(object):
         if task in self.tasks:
             self.tasks.remove(task)
         del self.tasks_ids[task.id]
-        
+
     def exists_task(self, task_id):
         return task_id in self.tasks_ids
-    
+
     def get_task(self, task_id):
         return self.tasks_ids.get(task_id)
-        
-#     def send_msg(self, msg):
-#         self.msgs.put(msg)
-         
+
     def mem_free(self):
         return gc.mem_free()
-    
+
     def cpu_idle(self):
         return self.idle
-    
+
     def set_log_to(self, task_id):
         self.log_to = task_id
-    
+
     def log(self, head, e):
         try:
             if self.log_to:
@@ -270,13 +286,14 @@ class Scheduler(object):
                 sys.print_exception(e, buf)
                 self.tasks_ids[self.log_to].put_message(Message.get().load({"output": head + buf.getvalue()}, sender = 0, sender_name = self.name))
             else:
-               sys.print_exception(e)
+                sys.print_exception(e)
         except Exception as e:
             sys.print_exception(e)
 
     def run(self):
         while not self.stop:
             try:
+#                 print("message remain: ", Message.remain())
                 load_interval = ticks_diff(ticks_us(), self.load_calc_at)
                 if load_interval >= 1000000:
                     load_interval /= 1000
@@ -292,22 +309,15 @@ class Scheduler(object):
                     self.sleep_ms = 0
                     self.load_calc_at = ticks_us()
                 if self.tasks:
-                    #print(self.tasks)
-#                     s = ticks_us()
                     if self.need_to_sort:
                         self.task_sort_at = ticks_ms()
                         self.tasks.sort(key = self.task_sort)
                         self.need_to_sort = False
-#                         self.cpu_time_ms += ticks_diff(ticks_us(), s) / 1000
                     peek = self.tasks[0]
-#                         s = ticks_us()
                     if peek.ready():
-                        # print("ready: %s" % peek.id)
-                        # processing tasks
                         self.current = self.tasks.pop(0)
                         task_start_at = ticks_us()
                         try:
-#                                 self.cpu_time_ms += ticks_diff(task_start_at, s) / 1000
                             self.current.set_condition(next(self.current.func))
                             self.tasks.append(self.current)
                             for msg in self.current.condition.send_msgs:
@@ -319,22 +329,16 @@ class Scheduler(object):
                             self.current = None
                             self.need_to_sort = True
                         except StopIteration:
-#                                 s = ticks_us()
                             self.remove_task(self.current)
                             cmd = self.current.name.split(" ")[0]
                             same_cmd_tasks = 0
                             for t in self.tasks:
                                 if t.name.startswith(cmd):
                                     same_cmd_tasks += 1
-                            # print("remain cmd: ", cmd, same_cmd_tasks)
                             if same_cmd_tasks == 0:
-                                # print("clean: ", self.current.need_to_clean)
                                 for m in self.current.need_to_clean:
                                     try:
                                         m_name = m.__name__
-                                        # del globals()[m.__name__]
-                                        # exec("del %s" % m.__name__)
-                                        # exec("del %s" % m.__name__.split(".")[-1])
                                         if hasattr(m, "main"):
                                             del m.main
                                         del sys.modules[m_name]
@@ -349,27 +353,18 @@ class Scheduler(object):
                                         h = "task: %s\n" % self.current.name
                                         self.log(h, e)
                             self.current.clean()
-                            # del self.current
                             self.current = None
-#                                 self.cpu_time_ms += ticks_diff(ticks_us(), s) / 1000
                         except TypeError:
-#                                 s = ticks_us()
                             if self.current:
                                 self.current.clean()
-                                # del self.current
                             self.current = None
-#                                 self.cpu_time_ms += ticks_diff(ticks_us(), s) / 1000
                         except Exception as e:
-#                                 s = ticks_us()
                             h = "task: %s\n" % self.current.name
                             self.log(h, e)
                             if self.current:
                                 self.current.clean()
-                                # del self.current
                             self.current = None
-#                                 self.cpu_time_ms += ticks_diff(ticks_us(), s) / 1000
 
-                        # processing messages
                         for msg in Message.need_to_reply():
                             msg.processed = False
                             if msg.receiver in self.tasks_ids:
