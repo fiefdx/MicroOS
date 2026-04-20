@@ -210,7 +210,7 @@ class Task(object):
         self.processed = True
 
 
-class Scheluder(object):
+class Scheduler(object):
     def __init__(self, log_to = None, name = "scheduler", cpu = 0):
         self.log_to = const(log_to)
         self.cpu = const(cpu)

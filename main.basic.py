@@ -28,7 +28,7 @@ from lib import sdcard
 # import font8
 # import font7
 from lib.display import ILI9488, Colors as C
-from lib.scheduler import Scheluder, Condition, Task, Message
+from lib.scheduler import Scheduler, Condition, Task, Message
 from lib.common import ticks_ms, ticks_add, ticks_diff, sleep_ms, Resource
 from lib.shell import Shell
 from lib.keyboard import Keyboard
@@ -510,7 +510,7 @@ if __name__ == "__main__":
         Message.init_pool(15)
         Condition.init_pool(12)
         Task.init_pool(12)
-        s = Scheluder(cpu = 0)
+        s = Scheduler(cpu = 0)
         display_id = s.add_task(Task.get().load(display, "display", condition = Condition.get(), kwargs = {"scheduler": s}))
         monitor_id = s.add_task(Task.get().load(monitor, "monitor", condition = Condition.get(), kwargs = {"scheduler": s, "display_id": display_id}))
         storage_id = s.add_task(Task.get().load(storage, "storage", condition = Condition.get(), kwargs = {"scheduler": s}))

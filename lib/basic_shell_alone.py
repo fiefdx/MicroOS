@@ -14,7 +14,7 @@ from .lexer import Lexer
 from .program import Program
 
 from .listfile import ListFile
-from .scheduler import Scheluder, Condition, Task, Message
+from .scheduler import Scheduler, Condition, Task, Message
 from .common import exists, path_join, isfile, isdir, path_split, mkdirs, copy, get_size, copyfile, copydir, rmtree
 
 
