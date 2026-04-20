@@ -4,6 +4,8 @@ from io import StringIO
 from time import ticks_ms, ticks_us, ticks_add, ticks_diff, sleep_ms, sleep_us
 from micropython import const
 
+_log_buffer = None  # Reusable buffer for error logging
+
 
 class Message(object):
     pool = []
@@ -286,11 +288,15 @@ class Scheduler(object):
         self.log_to = task_id
 
     def log(self, head, e):
+        global _log_buffer
         try:
             if self.log_to:
-                buf = StringIO()
-                sys.print_exception(e, buf)
-                self.tasks_ids[self.log_to].put_message(Message.get().load({"output": head + buf.getvalue()}, sender = 0, sender_name = self.name))
+                if _log_buffer is None:
+                    _log_buffer = StringIO()
+                _log_buffer.truncate(0)
+                _log_buffer.seek(0)
+                sys.print_exception(e, _log_buffer)
+                self.tasks_ids[self.log_to].put_message(Message.get().load({"output": head + _log_buffer.getvalue()}, sender = 0, sender_name = self.name))
             else:
                 sys.print_exception(e)
         except Exception as e:
