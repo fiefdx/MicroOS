@@ -323,7 +323,13 @@ class Scheduler(object):
                 if self.tasks:
                     if self.need_to_sort:
                         self.task_sort_at = ticks_ms()
-                        self.tasks.sort(key = self.task_sort)
+                        # Pre-calculate sort keys to reduce overhead during sort
+                        for t in self.tasks:
+                            if t.condition.wait_msg:
+                                t._sort_key = -1000000 if len(t.msgs) > 0 else 1000000
+                            else:
+                                t._sort_key = ticks_diff(t.condition.resume_at, self.task_sort_at)
+                        self.tasks.sort(key = lambda t: t._sort_key)
                         self.need_to_sort = False
                     peek = self.tasks[0]
                     if peek.ready():
