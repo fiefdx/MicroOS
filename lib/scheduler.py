@@ -192,14 +192,20 @@ class Task(object):
         if not self.msgs:
             return None
         if sender is None:
-            _ = self.msgs_senders.pop(0)
-            return self.msgs.pop(0)
+            # O(1) instead of O(n) pop(0)
+            msg = self.msgs[0]
+            sender_val = self.msgs_senders[0]
+            del self.msgs[0]
+            del self.msgs_senders[0]
+            return msg
             
         try:
             i = self.msgs_senders.index(sender)
-            _ = self.msgs_senders.pop(i)
-            return self.msgs.pop(i)
-        except:
+            msg = self.msgs[i]
+            del self.msgs[i]
+            del self.msgs_senders[i]
+            return msg
+        except ValueError:
             return None
 
     def ready(self):
