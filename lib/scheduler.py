@@ -101,7 +101,7 @@ class Condition(object):
         cls.free_top -= 1
         idx = cls.free_stack[cls.free_top]
         c = cls.pool[idx]
-        c.resume_at = ticks_ms()
+        c.resume_at = ticks_us()  # Current time in μs, sleep will be converted in load()
         c.wait_msg = False
         c.send_msgs.clear()
         c.processed = False
@@ -116,7 +116,7 @@ class Condition(object):
 
     def load(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
         self.code = code
-        self.resume_at = ticks_add(ticks_ms(), sleep)
+        self.resume_at = ticks_add(ticks_us(), sleep * 1000)  # Convert ms to us
         self.send_msgs = send_msgs if send_msgs is not None else []
         self.wait_msg = wait_msg
         self.processed = processed
@@ -224,7 +224,7 @@ class Task(object):
             return None
 
     def ready(self):
-        if ticks_diff(ticks_ms(), self.condition.resume_at) >= 0:
+        if ticks_diff(ticks_us(), self.condition.resume_at) >= 0:
             if self.condition.wait_msg is True:
                 return bool(self.msgs)
             elif self.condition.wait_msg >= 1:
@@ -336,7 +336,7 @@ class Scheduler(object):
                     self.load_calc_at = ticks_us()
                 if self.tasks:
                     if self.need_to_sort:
-                        self.task_sort_at = ticks_ms()
+                        self.task_sort_at = ticks_us()
                         # Pre-calculate sort keys to reduce overhead during sort
                         for t in self.tasks:
                             if t.condition.wait_msg:
