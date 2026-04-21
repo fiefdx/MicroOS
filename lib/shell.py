@@ -350,12 +350,17 @@ class Shell(object):
         self.cache_to_frame_history()
     
     def write_lines(self, lines, end = False):
-        if lines != "":
-            lines = lines.split("\n")
-            for line in lines:
-                #if len(line) > 0:
-                line = line.replace("\r", "")
-                line = line.replace("\n", "")
+        if lines:
+            # Process line by line without creating N string objects from split()
+            i = 0
+            lines_len = len(lines)
+            while i < lines_len:
+                # Find next newline
+                j = i
+                while j < lines_len and lines[j] != "\n" and lines[j] != "\r":
+                    j += 1
+                line = lines[i:j]
+                i = j + 1  # Skip past newline
                 self.cache.append(line)
                 if len(self.cache) > self.cache_lines:
                     self.cache.pop(0)
