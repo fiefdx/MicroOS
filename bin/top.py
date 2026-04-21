@@ -15,9 +15,15 @@ def main(*args, **kwargs):
     shell_id = kwargs["shell_id"]
     shell = kwargs["shell"]
     shell.enable_cursor = False
+    shell.disable_output = True
+    display_id = shell.display_id
     width, height = 40, 28
     try:
         app_exit = False
+        # Clear display before showing top
+        yield Condition.get().load(sleep = 0, send_msgs = [
+            Message.get().load({"clear": True}, receiver = display_id)
+        ])
         while not app_exit:
             try:
                 frame = []
@@ -44,8 +50,9 @@ def main(*args, **kwargs):
                     frame.append("%03d % 6.2f%% %28s"  % t)
                 for i in range(0, height - len(frame)):
                     frame.append("")
+                # Send frame directly to display, bypassing shell cache
                 yield Condition.get().load(sleep = 1000, wait_msg = False, send_msgs = [
-                    Message.get().load({"output_part": "\n".join(frame[:height])}, receiver = shell_id)
+                    Message.get().load({"frame": frame}, receiver = display_id)
                 ])
                 yield Condition.get().load(sleep = 1000)
                 msg = task.get_message()
@@ -55,14 +62,16 @@ def main(*args, **kwargs):
                     msg.release()
             except Exception as e:
                 print(e)
+        shell.disable_output = False
+        shell.enable_cursor = True
+        shell.loading = True
         yield Condition.get().load(sleep = 0, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
+    except Exception as e:
+        shell.disable_output = False
         shell.enable_cursor = True
         shell.loading = True
-    except Exception as e:
         yield Condition.get().load(sleep = 0, send_msgs = [
             Message.get().load({"output": sys.print_exception(e)}, receiver = shell_id)
         ])
-        shell.enable_cursor = True
-        shell.loading = True
