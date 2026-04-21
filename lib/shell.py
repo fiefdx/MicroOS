@@ -367,16 +367,16 @@ class Shell(object):
             
     def write(self, s):
         line_width = self.display_width_with_prompt
-        d = s[:line_width]
-        s = s[line_width:]
-        while len(d) > 0:
-            self.cache.append(d)
+        i = 0
+        s_len = len(s)
+        while i < s_len:
+            chunk = s[i:i + line_width]
+            self.cache.append(chunk)
             if len(self.cache) > self.cache_lines:
                 self.cache.pop(0)
             self.current_row = len(self.cache) - 1
             self.current_col = len(self.cache[-1])
-            d = s[:line_width]
-            s = s[line_width:]
+            i += line_width
         self.write_char("\n")
         self.cache_to_frame_history()
             
