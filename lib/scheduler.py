@@ -339,11 +339,12 @@ class Scheduler(object):
                                 t._sort_key = -1000000 if len(t.msgs) > 0 else 1000000
                             else:
                                 t._sort_key = ticks_diff(t.condition.resume_at, self.task_sort_at)
-                        self.tasks.sort(key = lambda t: t._sort_key)
+                        # Sort in reverse order so pop() gets smallest key (highest priority) in O(1)
+                        self.tasks.sort(key = lambda t: t._sort_key, reverse = True)
                         self.need_to_sort = False
-                    peek = self.tasks[0]
+                    peek = self.tasks[-1]
                     if peek.ready():
-                        self.current = self.tasks.pop(0)
+                        self.current = self.tasks.pop()
                         task_start_at = ticks_us()
                         try:
                             self.current.set_condition(next(self.current.func))
