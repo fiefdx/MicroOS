@@ -1,5 +1,6 @@
 import gc
 import sys
+import array
 from io import StringIO
 from time import ticks_ms, ticks_us, ticks_add, ticks_diff, sleep_ms, sleep_us
 from micropython import const
@@ -9,23 +10,25 @@ _log_buffer = None  # Reusable buffer for error logging
 
 class Message(object):
     pool = []
-    free_stack = []
+    free_stack = None  # array.array('H') for compact storage
+    free_top = 0       # Stack pointer (number of free items)
 
     @classmethod
     def init_pool(cls, size = 100):
         cls.pool.clear()
-        cls.free_stack.clear()
+        cls.free_stack = array.array('H', range(size))
+        cls.free_top = size
         for i in range(size):
             m = Message("", processed = True)
             m._pool_index = i
             cls.pool.append(m)
-            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        if not cls.free_stack:
+        if cls.free_top == 0:
             return None
-        idx = cls.free_stack.pop()
+        cls.free_top -= 1
+        idx = cls.free_stack[cls.free_top]
         m = cls.pool[idx]
         m.processed = False
         m.replied = False
@@ -39,7 +42,7 @@ class Message(object):
 
     @classmethod
     def remain(cls):
-        return len(cls.free_stack)
+        return cls.free_top
 
     def __init__(self, content, sender = None, sender_name = "", receiver = None, processed = False, drop_size = 0, need_reply = False):
         self.load(content, sender, sender_name, receiver, processed, drop_size, need_reply)
@@ -67,29 +70,32 @@ class Message(object):
             self.sender_name = ""
             self.receiver = None
             self.replied = True
-            Message.free_stack.append(self._pool_index)
+            Message.free_stack[Message.free_top] = self._pool_index
+            Message.free_top += 1
         self.processed = True
 
 
 class Condition(object):
     pool = []
-    free_stack = []
+    free_stack = None  # array.array('H') for compact storage
+    free_top = 0       # Stack pointer (number of free items)
 
     @classmethod
     def init_pool(cls, size = 100):
         cls.pool.clear()
-        cls.free_stack.clear()
+        cls.free_stack = array.array('H', range(size))
+        cls.free_top = size
         for i in range(size):
             c = Condition(processed = True)
             c._pool_index = i
             cls.pool.append(c)
-            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        if not cls.free_stack:
+        if cls.free_top == 0:
             return None
-        idx = cls.free_stack.pop()
+        cls.free_top -= 1
+        idx = cls.free_stack[cls.free_top]
         c = cls.pool[idx]
         c.resume_at = ticks_ms()
         c.wait_msg = False
@@ -99,7 +105,7 @@ class Condition(object):
 
     @classmethod
     def remain(cls):
-        return len(cls.free_stack)
+        return cls.free_top
 
     def __init__(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
         self.load(code, sleep, send_msgs, wait_msg, processed)
@@ -119,36 +125,39 @@ class Condition(object):
         self.wait_msg = False
         self.processed = True
         # Return to pool using stored index (O(1))
-        Condition.free_stack.append(self._pool_index)
+        Condition.free_stack[Condition.free_top] = self._pool_index
+        Condition.free_top += 1
 
 
 class Task(object):
     pool = []
-    free_stack = []
+    free_stack = None  # array.array('H') for compact storage
+    free_top = 0       # Stack pointer (number of free items)
     id_count = 0
 
     @classmethod
     def init_pool(cls, size = 100):
         cls.pool.clear()
-        cls.free_stack.clear()
+        cls.free_stack = array.array('H', range(size))
+        cls.free_top = size
         for i in range(size):
             t = Task(None, "", processed = True)
             t._pool_index = i
             cls.pool.append(t)
-            cls.free_stack.append(i)
 
     @classmethod
     def get(cls):
-        if not cls.free_stack:
+        if cls.free_top == 0:
             return None
-        idx = cls.free_stack.pop()
+        cls.free_top -= 1
+        idx = cls.free_stack[cls.free_top]
         t = cls.pool[idx]
         t.processed = False
         return t
 
     @classmethod
     def remain(cls):
-        return len(cls.free_stack)
+        return cls.free_top
 
     @classmethod
     def new_id(cls):
@@ -234,7 +243,8 @@ class Task(object):
         self.reset_sys_path = False
         self.processed = True
         # Return to pool using stored index (O(1))
-        Task.free_stack.append(self._pool_index)
+        Task.free_stack[Task.free_top] = self._pool_index
+        Task.free_top += 1
 
 
 class Scheduler(object):
