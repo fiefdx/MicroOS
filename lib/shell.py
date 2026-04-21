@@ -42,6 +42,7 @@ class Shell(object):
         self.stats = ""
         self.loading = True
         self.shell_id = shell_id
+        self._line_chars = []  # list of chars for current input line (mutable, no alloc on append)
         self.load_history()
     
     def load_history(self):
@@ -221,19 +222,30 @@ class Shell(object):
     def get_cursor_cache_position(self, c = None):
         return self.current_col, self.current_row if self.current_row <= (self.display_height - 1) else (self.display_height - 1), self.cursor_color if c is None else c
     
+    def _line_str(self):
+        """Convert current line chars to string. Only allocates when needed."""
+        return "".join(self._line_chars)
+    
     def write_char(self, c):
         if c == "\n":
+            # Flush current line to cache as string, start fresh
+            # DO NOT clear _line_chars here - input_char will handle that after processing
+            if self._line_chars:
+                self.cache.append("".join(self._line_chars))
             self.cache.append(self.prompt_c)
         elif len(c) == 1:
-            self.cache[-1] += c
-            if len(self.cache[-1]) > self.display_width_with_prompt:
-                self.cache.append(" " + self.cache[-1][self.display_width_with_prompt:])
+            # Append to list - zero allocations (list is mutable)
+            self._line_chars.append(c)
+            if len(self._line_chars) > self.display_width_with_prompt:
+                # Line wrapped: flush current line, start new one
+                self.cache.append("".join(self._line_chars))
+                self._line_chars = self._line_chars[self.display_width_with_prompt:]
                 self.cache[-2] = self.cache[-2][:self.display_width_with_prompt]
-                
+
         if len(self.cache) > self.cache_lines:
             self.cache.pop(0)
         self.current_row = len(self.cache) - 1
-        self.current_col = len(self.cache[-1])
+        self.current_col = len(self.prompt_c) + len(self._line_chars)  # Include prompt in cursor position
 
     def update_stats(self, d):
         # self.stats = "[ C%3d%%|R%3d%%:%s|D %4dK|B[%s] %3d%%]" % (d[1], d[2], ram_size(d[3]), d[6] / 1024, "C" if d[8] else "D", d[9])
@@ -247,30 +259,39 @@ class Shell(object):
                 self.scheduler.add_task(Task.get().load(self.send_session_message, c, condition = Condition.get(), kwargs = {})) # execute cmd
             else:
                 if c == "\n":
-                    cmd = self.cache[-1][len(self.prompt_c):].strip()
+                    # Convert line chars to string for command processing
+                    # Note: _line_chars only contains typed chars, NOT the prompt
+                    line_str = "".join(self._line_chars)
+                    cmd = line_str.strip()
                     if len(cmd) > 0:
                         if cmd.startswith("run "):
-                            self.history.append(self.cache[-1][len(self.prompt_c):])
-                            self.write_history(self.cache[-1][len(self.prompt_c):])
+                            self.history.append(line_str)
+                            self.write_history(line_str)
                             cmd = " ".join(cmd.split(" ")[1:]).strip()
                             self.scheduler.add_task(Task.get().load(self.run_script_coroutine, cmd, condition = Condition.get(), kwargs = {})) # execute cmd
                         else:
                             if self.session_task_id is not None and self.scheduler.exists_task(self.session_task_id):
-                                self.scheduler.add_task(Task.get().load(self.send_session_message, self.cache[-1].strip(), condition = Condition.get(), kwargs = {})) # execute cmd
+                                self.scheduler.add_task(Task.get().load(self.send_session_message, line_str.strip(), condition = Condition.get(), kwargs = {})) # execute cmd
                             else:
-                                self.history.append(self.cache[-1][len(self.prompt_c):])
-                                self.write_history(self.cache[-1][len(self.prompt_c):])
+                                self.history.append(line_str)
+                                self.write_history(line_str)
                                 command = cmd.split(" ")[0].strip()
                                 self.scheduler.add_task(Task.get().load(self.run_coroutine, cmd, condition = Condition.get(), kwargs = {})) # execute cmd
+                        # Clear input buffer after command execution
+                        self._line_chars = []
                     else:
+                        self._line_chars = []
                         self.cache.append(self.prompt_c)
                         self.cache_to_frame_history()
                     if len(self.history) > self.history_length:
                         self.history.pop(0)
                     self.history_idx = len(self.history)
                 elif c == "\b":
-                    if len(self.cache[-1][:self.current_col]) > len(self.prompt_c):
-                        self.cache[-1] = self.cache[-1][:self.current_col-1] + self.cache[-1][self.current_col:]
+                    # Backspace: delete from _line_chars (typed chars only, no prompt)
+                    if self.current_col > len(self.prompt_c):
+                        typed_pos = self.current_col - len(self.prompt_c) - 1
+                        del self._line_chars[typed_pos]
+                        self.cache[-1] = self.prompt_c + "".join(self._line_chars)
                         self.cursor_move_left()
                 elif c == "BX":
                     self.scroll_up()
@@ -289,9 +310,12 @@ class Shell(object):
                 elif c == "Ctrl-V":
                     self.paste()
                 elif len(c) == 1:
-                    self.cache[-1] = self.cache[-1][:self.current_col] + c + self.cache[-1][self.current_col:]
+                    # Insert character into list at cursor position (relative to typed chars)
+                    typed_pos = self.current_col - len(self.prompt_c)
+                    self._line_chars.insert(typed_pos, c)
+                    self.cache[-1] = self.prompt_c + "".join(self._line_chars)
                     self.cursor_move_right()
-                    
+
             if len(self.cache) > self.cache_lines:
                 self.cache.pop(0)
             self.current_row = len(self.cache)
@@ -302,7 +326,11 @@ class Shell(object):
     def paste(self):
         line = ClipBoard.get_line()
         if line:
-            self.cache[-1] = self.cache[-1][:self.current_col] + line + self.cache[-1][self.current_col:]        
+            typed_pos = self.current_col - len(self.prompt_c)
+            # Insert all chars at once to preserve order
+            self._line_chars[typed_pos:typed_pos] = list(line)
+            self.cache[-1] = self.prompt_c + "".join(self._line_chars)
+            self.current_col += len(line)        
             
     def write_line(self, line):
         self.cache.append(line)
@@ -433,7 +461,7 @@ class Shell(object):
         #print("current_col: ", self.current_col)
     
     def cursor_move_right(self):
-        if self.current_col < len(self.cache[-1]):
+        if self.current_col < len(self.prompt_c) + len(self._line_chars):
             self.current_col += 1
         #print("current_col: ", self.current_col)
         
@@ -456,10 +484,12 @@ class Shell(object):
             #if self.history_idx > len(self.history) - 1:
             #    self.history_idx = len(self.history) - 1
             #print("history:", self.history, self.history_idx)
-            self.cache[-1] = self.prompt_c + self.history[self.history_idx]
+            full_line = self.prompt_c + self.history[self.history_idx]
+            self._line_chars = list(self.history[self.history_idx])  # typed chars only
+            self.cache[-1] = full_line
             self.current_row = len(self.cache) - 1
-            self.current_col = len(self.cache[-1])
-        
+            self.current_col = len(full_line)
+
     def history_next(self):
         self.history_idx += 1
         if self.history_idx > len(self.history) - 1:
@@ -467,8 +497,10 @@ class Shell(object):
         #print("history:", self.history, self.history_idx)
         if len(self.history) > 0:
             if self.history_idx > len(self.history) - 1:
+                self._line_chars = []
                 self.cache[-1] = self.prompt_c
             else:
+                self._line_chars = list(self.history[self.history_idx])  # typed chars only
                 self.cache[-1] = self.prompt_c + self.history[self.history_idx]
             #print("history:", self.history, self.history_idx)
             self.current_row = len(self.cache) - 1
