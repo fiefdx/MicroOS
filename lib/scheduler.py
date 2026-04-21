@@ -12,12 +12,14 @@ class Message(object):
     pool = []
     free_stack = None  # array.array('H') for compact storage
     free_top = 0       # Stack pointer (number of free items)
+    reply_queue = []   # Track messages needing reply (optimization)
 
     @classmethod
     def init_pool(cls, size = 100):
         cls.pool.clear()
         cls.free_stack = array.array('H', range(size))
         cls.free_top = size
+        cls.reply_queue.clear()
         for i in range(size):
             m = Message("", processed = True)
             m._pool_index = i
@@ -36,9 +38,10 @@ class Message(object):
 
     @classmethod
     def need_to_reply(cls):
-        for m in cls.pool:
-            if m.processed and not m.replied:
-                yield m
+        # O(1) when no replies needed, O(n) only for actual replies
+        for m in cls.reply_queue:
+            yield m
+        cls.reply_queue.clear()
 
     @classmethod
     def remain(cls):
@@ -64,6 +67,7 @@ class Message(object):
             self.content = self.sender_name
             self.need_reply = False
             self.replied = False
+            Message.reply_queue.append(self)  # Re-add to reply queue
         else:
             self.content = ""
             self.sender = None
