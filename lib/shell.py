@@ -86,7 +86,7 @@ class Shell(object):
         self.history_file.flush()
     
     def help_commands(self):
-        result = ""
+        lines = []  # Collect lines in a list
         fs = uos.listdir("/bin")
         fs.append("run")
         fs.sort()
@@ -95,17 +95,13 @@ class Shell(object):
             if f not in ("__init__.py", ):
                 cmd = f.split(".")[0]
                 if len(line + cmd + ", ") > self.display_width:
-                    result += line + "\n"
+                    lines.append(line)  # Add completed line
                     line = cmd + ", "
                 else:
                     line += cmd + ", "
-        if line != "":
-            result += line
-        if result.endswith(", "):
-            result = result[:-2]
-        elif result.endswith("\n"):
-            result = result[:-1]
-        return result
+        if line:
+            lines.append(line.rstrip(", "))  # Strip trailing comma/space
+        return "\n".join(lines)
 
     def clear_cache(self):
         self.cache.clear()
