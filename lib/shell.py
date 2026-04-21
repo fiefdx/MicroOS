@@ -1,7 +1,6 @@
 import sys
 import uos
 from io import StringIO
-from math import ceil
 from micropython import const
 
 # from listfile import ListFile
@@ -129,9 +128,12 @@ class Shell(object):
     
     def cache_to_frame_history(self):
         self.frame_history.clear()
+        width = self.display_width_with_prompt
         for n, line in enumerate(self.cache[:-1]):
-            for i in range(ceil(len(line) / self.display_width_with_prompt)):
-                self.frame_history.append(line[i*self.display_width_with_prompt:(i+1)*self.display_width_with_prompt])
+            line_len = len(line)
+            for i in range((line_len + width - 1) // width):  # ceil(len/width) using integer math
+                start = i * width
+                self.frame_history.append(line[start:start + width])
                 
     def history_to_frame(self, last_lines, scroll_row):
         frame = []
@@ -163,26 +165,30 @@ class Shell(object):
         self.cursor_row = 0
         self.cursor_col = 0
         row = -1
+        width = self.display_width_with_prompt
         if self.scroll_row == 0:
             lines = self.cache[-self.display_height:]
             for n, line in enumerate(lines):
                 if len(line) > 0:
-                    for i in range(ceil(len(line) / self.display_width_with_prompt)):
-                        frame.append(line[i*self.display_width_with_prompt:(i+1)*self.display_width_with_prompt])
+                    line_len = len(line)
+                    for i in range((line_len + width - 1) // width):  # ceil(len/width) using integer math
+                        start = i * width
+                        frame.append(line[start:start + width])
                         row += 1
                         if len(frame) > self.display_height:
                             frame.pop(0)
                             row -= 1
-                        if n == len(lines) - 1: # last line in cache
-                            if ceil(self.current_col / self.display_width_with_prompt) == (i + 1): # cursor in current line
+                        if n == len(lines) - 1:  # last line in cache
+                            cursor_chunks = (self.current_col + width - 1) // width  # ceil(current_col/width)
+                            if cursor_chunks == (i + 1):  # cursor in current line
                                 self.cursor_row = row
-                                self.cursor_col = self.current_col % self.display_width_with_prompt
+                                self.cursor_col = self.current_col % width
                                 if self.cursor_col == 0:
-                                    self.cursor_col = self.display_width_with_prompt
+                                    self.cursor_col = width
                                     self.cursor_col = 0
                                     self.cursor_row += 1
                                 #print("cursor_row: ", row, "cursor_col: ", self.cursor_col)
-                            elif ceil(self.current_col / self.display_width_with_prompt) < (i + 1):
+                            elif cursor_chunks < (i + 1):
                                 if len(frame) >= self.display_height:
                                     self.cursor_row -= 1
                 else:
@@ -192,8 +198,11 @@ class Shell(object):
         else:
             frame_lines = []
             line = self.cache[-1]
-            for i in range(ceil(len(line) / self.display_width_with_prompt)):
-                frame_lines.append(line[i*self.display_width_with_prompt:(i+1)*self.display_width_with_prompt])
+            line_len = len(line)
+            width = self.display_width_with_prompt
+            for i in range((line_len + width - 1) // width):  # ceil(len/width) using integer math
+                start = i * width
+                frame_lines.append(line[start:start + width])
             frame = self.history_to_frame(frame_lines, self.scroll_row)
         if self.cursor_row >= self.display_height:
             self.cursor_row = self.display_height - 1
