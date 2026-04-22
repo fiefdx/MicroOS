@@ -140,3 +140,9 @@ class ListFile(object):
         self.list.clear()
         # self.rf.close()
         # self.wf.close()
+    
+    def close(self):
+        if hasattr(self, 'wf') and self.wf:
+            self.wf.close()
+        if hasattr(self, 'rf') and self.rf:
+            self.rf.close()

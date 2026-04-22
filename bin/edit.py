@@ -884,11 +884,13 @@ class EditShell(object):
                 self.highlight_cache.clear()
             
     def close(self):
-        self.cache.clear()
-        self.edit_history.clear()
-        self.edit_redo_cache.clear()
+        if hasattr(self.cache, 'close'):
+            self.cache.close()
+        if hasattr(self.edit_history, 'close'):
+            self.edit_history.close()
+        if hasattr(self.edit_redo_cache, 'close'):
+            self.edit_redo_cache.close()
         self.highlight_cache.clear()
-        del self.cache
 
 def main(*args, **kwargs):
     #print(kwargs["args"])
