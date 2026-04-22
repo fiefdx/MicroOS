@@ -1,5 +1,6 @@
 import os
 import sys
+import gc
 from math import ceil
 from io import StringIO
 
@@ -131,7 +132,7 @@ class Explorer(object):
     def edit(self, file_path):
         if self.mode == "":
             self.mode = "edit"
-            self.editor = EditShell(file_path)
+            self.editor = EditShell(file_path, edit_id=self.shell.shell_id)
             self.shell.enable_cursor = True
             
     def get_editor_init_frame(self):
@@ -470,6 +471,7 @@ class Explorer(object):
                 self.shell.enable_cursor = False
                 self.editor.close()
                 self.editor = None
+                gc.collect()
 
 
 def main(*args, **kwargs):
