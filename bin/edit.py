@@ -71,6 +71,7 @@ class EditShell(object):
         self.frame_force_update = False
         self.previous_offset_row = 0
         self.previous_offset_col = 0
+        self.highlight_cache = {}
         
     def set_ram(self, ram):
         self.cache = [] if ram else ListFile(path_join(self.cache_path, "edit_cache.%d.json" % self.id), shrink_threshold = 1024000) # []
@@ -123,6 +124,8 @@ class EditShell(object):
                 if col > 0:
                     self.cursor_move_right(col)
                 self.frame_force_update = True
+                if self.highlight:
+                    self.highlight_cache.clear()
             elif c == "\b":
                 self.status = "changed"
                 self.exit_count = 0
@@ -151,6 +154,8 @@ class EditShell(object):
                             self.cache[self.cursor_row] += current_line
                             self.edit_history.append(op)
                 self.frame_force_update = True
+                if self.highlight:
+                    self.highlight_cache.clear()
             elif c == "UP" or c == "SUP":
                 self.cursor_move_up()
             elif c == "DN" or c == "SDN":
@@ -218,6 +223,8 @@ class EditShell(object):
                 self.cache[self.cursor_row] = self.cache[self.cursor_row][:self.cursor_col + self.offset_col] + c + self.cache[self.cursor_row][self.cursor_col + self.offset_col:]
                 self.cursor_move_right(n)
                 self.frame_force_update = True
+                if self.highlight:
+                    self.highlight_cache.clear()
         elif self.mode == "select":
             if c == "UP" or c == "SUP":
                 self.cursor_move_up()
@@ -305,6 +312,7 @@ class EditShell(object):
         self.file.close()
         self.status = "saved"
         yield 100
+        gc.collect()
         
     def exists_line(self, line_num):
         return line_num >= 0 and line_num < self.total_lines
@@ -396,7 +404,10 @@ class EditShell(object):
             for n, line in enumerate(self.cache[self.display_offset_row: self.display_offset_row + self.cache_size]):
                 frame.append(line[self.offset_col: self.offset_col + self.display_width])
                 if self.highlight:
-                    highlights.extend(self.highlight_line(line, self.offset_col, self.offset_col + self.display_width, n))
+                    line_num = self.display_offset_row + n
+                    if line_num not in self.highlight_cache:
+                        self.highlight_cache[line_num] = self.highlight_line(line, self.offset_col, self.offset_col + self.display_width, n)
+                    highlights.extend(self.highlight_cache[line_num])
             for i in range(self.cache_size - len(frame)):
                 frame.append("")
             self.frame_previous = True
@@ -675,6 +686,8 @@ class EditShell(object):
             self.cursor_row = 0
         if self.cursor_row < self.display_offset_row:
             self.display_offset_row = self.cursor_row
+            if self.highlight:
+                self.highlight_cache.clear()
         if len(self.cache[self.cursor_row]) < self.offset_col + self.cursor_col:
             self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
     
@@ -684,6 +697,8 @@ class EditShell(object):
             self.cursor_row = len(self.cache) - 1
         if self.cursor_row > self.display_offset_row + self.cache_size - 1:
             self.display_offset_row += 1
+            if self.highlight:
+                self.highlight_cache.clear()
         if len(self.cache[self.cursor_row]) < self.offset_col + self.cursor_col:
             self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
             
@@ -696,6 +711,8 @@ class EditShell(object):
             self.cursor_row = 0
         if len(self.cache[self.cursor_row]) < self.offset_col + self.cursor_col:
             self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
+        if self.highlight:
+            self.highlight_cache.clear()
     
     def page_down(self):
         self.display_offset_row += self.cache_size // 4
@@ -706,6 +723,8 @@ class EditShell(object):
             self.display_offset_row = len(self.cache) - self.cache_size
         if len(self.cache[self.cursor_row]) < self.offset_col + self.cursor_col:
             self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
+        if self.highlight:
+            self.highlight_cache.clear()
     
     def cursor_move_left(self):
         self.cursor_col -= 1
@@ -715,12 +734,16 @@ class EditShell(object):
                     self.cursor_col = 0
                     if self.offset_col > 0:
                         self.offset_col -= 1
+                        if self.highlight:
+                            self.highlight_cache.clear()
     #                     self.cache_to_frame()
                     else:
                         if self.cursor_row > 0:
                             self.cursor_row -= 1
                             self.cursor_col = len(self.cache[self.cursor_row]) % self.display_width
                             self.offset_col = len(self.cache[self.cursor_row]) - self.cursor_col
+                            if self.highlight:
+                                self.highlight_cache.clear()
                         else:
                             self.cursor_col = 0
                             self.offset_col = 0
@@ -732,18 +755,24 @@ class EditShell(object):
             if self.cursor_row >= 0:
                 self.cursor_col = len(self.cache[self.cursor_row]) % self.display_width
                 self.offset_col = len(self.cache[self.cursor_row]) - self.cursor_col
+                if self.highlight:
+                    self.highlight_cache.clear()
             else:
                 self.cursor_col = 0
                 self.offset_col = 0
 
         if self.cursor_row < self.display_offset_row:
             self.display_offset_row = self.cursor_row
+            if self.highlight:
+                self.highlight_cache.clear()
         
     def cursor_move_right(self, n = 1):
         self.cursor_col += n
         if len(self.cache[self.cursor_row]) > self.cursor_col + self.offset_col - 1:
             if self.cursor_col >= self.display_width:
                 self.offset_col += n
+                if self.highlight:
+                    self.highlight_cache.clear()
 #                 self.cache_to_frame()
                 self.cursor_col = self.display_width - 1
         else:
@@ -752,8 +781,12 @@ class EditShell(object):
                 self.cursor_row += 1
                 self.cursor_col = 0
                 self.offset_col = 0
+                if self.highlight:
+                    self.highlight_cache.clear()
         if self.cursor_row > self.display_offset_row + self.cache_size - 1:
             self.display_offset_row += 1
+            if self.highlight:
+                self.highlight_cache.clear()
             
     def page_left(self):
         if self.offset_col > 0:
@@ -768,7 +801,8 @@ class EditShell(object):
                     self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
                 if self.cursor_col < 0:
                     self.cursor_col = 0
-#             self.cache_to_frame()
+            if self.highlight:
+                self.highlight_cache.clear()
         elif self.offset_col == 0:
             self.cursor_col = 0
     
@@ -776,7 +810,8 @@ class EditShell(object):
         self.offset_col += self.display_width // 4
         if len(self.cache[self.cursor_row]) < self.cursor_col + self.offset_col:
             self.cursor_col = len(self.cache[self.cursor_row]) - self.offset_col
-#         self.cache_to_frame()
+        if self.highlight:
+            self.highlight_cache.clear()
 
     def undo(self):
         if len(self.edit_history) > 0:
@@ -814,6 +849,8 @@ class EditShell(object):
                 self.cache[op[1] - 1] = op[3]
                 self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col = op[4]
             self.edit_redo_cache.append(op)
+            if self.highlight:
+                self.highlight_cache.clear()
 
     def redo(self):
         if len(self.edit_redo_cache) > 0:
@@ -840,11 +877,14 @@ class EditShell(object):
                 self.cache[op[1] - 1] = op[3] + op[2]
                 self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col = op[4]
             self.edit_history.append(op)
+            if self.highlight:
+                self.highlight_cache.clear()
             
     def close(self):
         self.cache.clear()
         self.edit_history.clear()
         self.edit_redo_cache.clear()
+        self.highlight_cache.clear()
         del self.cache
 
 def main(*args, **kwargs):
