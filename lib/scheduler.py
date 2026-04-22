@@ -251,6 +251,10 @@ class Task(object):
         Task.free_top += 1
 
 
+def _sort_key(task):
+    return task._sort_key
+
+
 class Scheduler(object):
     def __init__(self, log_to = None, name = "scheduler", cpu = 0):
         self.log_to = const(log_to)
@@ -344,7 +348,7 @@ class Scheduler(object):
                             else:
                                 t._sort_key = ticks_diff(t.condition.resume_at, self.task_sort_at)
                         # Sort in reverse order so pop() gets smallest key (highest priority) in O(1)
-                        self.tasks.sort(key = lambda t: t._sort_key, reverse = True)
+                        self.tasks.sort(key=_sort_key, reverse=True)
                         self.need_to_sort = False
                     peek = self.tasks[-1]
                     if peek.ready():
