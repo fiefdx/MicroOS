@@ -41,6 +41,7 @@ class PyShell(Shell):
         self.history_file_path = history_file_path
         self.stats = ""
         self.loading = True
+        self._line_chars = []  # list of chars for current input line (mutable, no alloc on append)
         self.load_history()
         self.clear()
         #Shell.__init__(self, display_size = display_size, cache_size = cache_size, history_length = history_length, prompt_c = prompt_c, scheduler = scheduler, display_id = display_id, storage_id = storage_id)
@@ -98,12 +99,17 @@ class PyShell(Shell):
         self.clear()
         return lines
         
+    def _line_str(self):
+        """Convert current line chars to string. Only allocates when needed."""
+        return "".join(self._line_chars)
+    
     def input_char(self, c):
         if c == "\n":
-            cmd = self.cache[-1][len(self.prompt_c):].strip()
+            line_str = self._line_str()
+            cmd = line_str.strip()
             if len(cmd) > 0:
-                self.history.append(self.cache[-1][len(self.prompt_c):])
-                self.write_history(self.cache[-1][len(self.prompt_c):])
+                self.history.append(line_str)
+                self.write_history(line_str)
                 if cmd == "quit()":
                     self.exit = True
                     uos.dupterm(None)
@@ -115,7 +121,8 @@ class PyShell(Shell):
                     self.frame_history.clear()
                     self.cache.append(self.prompt_c)
                     self.current_row = len(self.cache) - 1
-                    self.current_col = len(self.cache[-1])
+                    self.current_col = len(self.prompt_c)
+                    self._line_chars = []
                 else:
                     if "=" in cmd or "for" in cmd or "import" in cmd or "from" in cmd or "if" in cmd:
                         try:
@@ -147,13 +154,17 @@ class PyShell(Shell):
                             self.clear()
             else:
                 self.cache.append(self.prompt_c)
+                self._line_chars = []
                 self.cache_to_frame_history()
             if len(self.history) > self.history_length:
                 self.history.pop(0)
             self.history_idx = len(self.history)
+            self._line_chars = []
         elif c == "\b":
-            if len(self.cache[-1][:self.current_col]) > len(self.prompt_c):
-                self.cache[-1] = self.cache[-1][:self.current_col-1] + self.cache[-1][self.current_col:]
+            if self.current_col > len(self.prompt_c):
+                typed_pos = self.current_col - len(self.prompt_c) - 1
+                del self._line_chars[typed_pos]
+                self.cache[-1] = self.prompt_c + self._line_str()
                 self.cursor_move_left()
         elif c == "BX":
             self.scroll_up()
@@ -170,7 +181,9 @@ class PyShell(Shell):
         elif c == "ES":
             pass
         elif len(c) == 1:
-            self.cache[-1] = self.cache[-1][:self.current_col] + c + self.cache[-1][self.current_col:]
+            typed_pos = self.current_col - len(self.prompt_c)
+            self._line_chars.insert(typed_pos, c)
+            self.cache[-1] = self.prompt_c + self._line_str()
             self.cursor_move_right()
                 
         if len(self.cache) > self.cache_lines:

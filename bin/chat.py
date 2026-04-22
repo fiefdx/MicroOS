@@ -51,6 +51,7 @@ class ChatShell(Shell):
         self.history_file_path = history_file_path
         self.stats = ""
         self.loading = True
+        self._line_chars = []  # list of chars for current input line (mutable, no alloc on append)
         self.chat = Chat(host = host, port = port, model = model, stream = stream, cache_file = path_join(self.cache_path, "chat_request_cache.%d.txt" % self.id))
         self.chat_log = None
         self.load_history()
@@ -98,14 +99,19 @@ class ChatShell(Shell):
             Resource.chat_history_file = open(self.history_file_path, "a")
         self.history_file = Resource.chat_history_file
         self.history_idx = len(self.history)
+    
+    def _line_str(self):
+        """Convert current line chars to string. Only allocates when needed."""
+        return "".join(self._line_chars)
         
     def input_char(self, c):
         try:
             if c == "\n":
-                cmd = self.cache[-1][len(self.prompt_c):].strip()
+                line_str = self._line_str()
+                cmd = line_str.strip()
                 if len(cmd) > 0:
-                    self.history.append(self.cache[-1][len(self.prompt_c):])
-                    self.write_history(self.cache[-1][len(self.prompt_c):])
+                    self.history.append(line_str)
+                    self.write_history(line_str)
                     if cmd == "exit" or cmd == "quit":
                         self.exit = True
                     elif cmd == "clear":
@@ -113,7 +119,8 @@ class ChatShell(Shell):
                         self.frame_history.clear()
                         self.cache.append(self.prompt_c)
                         self.current_row = len(self.cache) - 1
-                        self.current_col = len(self.cache[-1])
+                        self.current_col = len(self.prompt_c)
+                        self._line_chars = []
                     elif cmd == "new":
                         if self.chat_log is not None:
                             self.chat_log.close()
@@ -170,13 +177,17 @@ class ChatShell(Shell):
                             self.write_lines(str(e), end = True)
                 else:
                     self.cache.append(self.prompt_c)
+                    self._line_chars = []
                     self.cache_to_frame_history()
                 if len(self.history) > self.history_length:
                     self.history.pop(0)
                 self.history_idx = len(self.history)
+                self._line_chars = []
             elif c == "\b":
-                if len(self.cache[-1][:self.current_col]) > len(self.prompt_c):
-                    self.cache[-1] = self.cache[-1][:self.current_col-1] + self.cache[-1][self.current_col:]
+                if self.current_col > len(self.prompt_c):
+                    typed_pos = self.current_col - len(self.prompt_c) - 1
+                    del self._line_chars[typed_pos]
+                    self.cache[-1] = self.prompt_c + self._line_str()
                     self.cursor_move_left()
             elif c == "BX":
                 self.scroll_up()
@@ -193,7 +204,9 @@ class ChatShell(Shell):
             elif c == "ES":
                 pass
             elif len(c) == 1:
-                self.cache[-1] = self.cache[-1][:self.current_col] + c + self.cache[-1][self.current_col:]
+                typed_pos = self.current_col - len(self.prompt_c)
+                self._line_chars.insert(typed_pos, c)
+                self.cache[-1] = self.prompt_c + self._line_str()
                 self.cursor_move_right()
                     
             if len(self.cache) > self.cache_lines:
@@ -259,8 +272,10 @@ class ChatShell(Shell):
         return data
 
     def close(self):
-        self.cache.clear()
-        del self.cache
+        if hasattr(self.cache, 'close'):
+            self.cache.close()
+        if hasattr(self.frame_history, 'close'):
+            self.frame_history.close()
 
 
 def main(*args, **kwargs):
