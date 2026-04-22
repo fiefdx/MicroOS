@@ -262,6 +262,7 @@ class Scheduler(object):
         self.name = const(name)
         self.tasks = []
         self.tasks_ids = {}
+        self._cmd_counts = {}  # Track task counts per command prefix
         self.task_sort_at = 0
         self.current = None
         self.sleep_ms = 0
@@ -274,6 +275,9 @@ class Scheduler(object):
         self.need_to_sort = True
         self.stop = False
 
+    def _get_cmd_prefix(self, name):
+        return name.split(" ")[0]
+
     def task_sort(self, task):
         if task.condition.wait_msg:
             return -1000000 if len(task.msgs) > 0 else 1000000
@@ -282,6 +286,8 @@ class Scheduler(object):
     def add_task(self, task):
         self.tasks.append(task)
         self.tasks_ids[task.id] = task
+        cmd = self._get_cmd_prefix(task.name)
+        self._cmd_counts[cmd] = self._cmd_counts.get(cmd, 0) + 1
         self.need_to_sort = True
         return task.id
 
@@ -289,6 +295,10 @@ class Scheduler(object):
         if task in self.tasks:
             self.tasks.remove(task)
         del self.tasks_ids[task.id]
+        cmd = self._get_cmd_prefix(task.name)
+        self._cmd_counts[cmd] -= 1
+        if self._cmd_counts[cmd] <= 0:
+            del self._cmd_counts[cmd]
 
     def exists_task(self, task_id):
         return task_id in self.tasks_ids
@@ -366,13 +376,9 @@ class Scheduler(object):
                             self.current = None
                             self.need_to_sort = True
                         except StopIteration:
+                            cmd = self._get_cmd_prefix(self.current.name)
                             self.remove_task(self.current)
-                            cmd = self.current.name.split(" ")[0]
-                            same_cmd_tasks = 0
-                            for t in self.tasks:
-                                if t.name.startswith(cmd):
-                                    same_cmd_tasks += 1
-                            if same_cmd_tasks == 0:
+                            if cmd not in self._cmd_counts:
                                 for m in self.current.need_to_clean:
                                     try:
                                         m_name = m.__name__
