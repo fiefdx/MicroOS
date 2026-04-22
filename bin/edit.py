@@ -72,6 +72,9 @@ class EditShell(object):
         self.previous_offset_row = 0
         self.previous_offset_col = 0
         self.highlight_cache = {}
+        # Reusable lists to reduce memory allocations
+        self._clear_lines = []
+        self._select_lines = []
         
     def set_ram(self, ram):
         self.cache = [] if ram else ListFile(path_join(self.cache_path, "edit_cache.%d.json" % self.id), shrink_threshold = 1024000) # []
@@ -356,20 +359,20 @@ class EditShell(object):
             data["highlights"] = highlights
         
         if self.mode == "select":
-            clears = []
+            self._clear_lines.clear()
             for i in range(28):
-                clears.append([1, i * 11 + 9, 318, i * 11 + 9, C.black])
-            selects = []
+                self._clear_lines.append([1, i * 11 + 9, 318, i * 11 + 9, C.black])
+            self._select_lines.clear()
             for l in self.get_select_lines():
-                selects.append([l[0][0], l[0][1], l[1][0] - 1, l[1][1], C.red])
-            data["clear_lines"] = clears
-            data["selects"] = selects
+                self._select_lines.append([l[0][0], l[0][1], l[1][0] - 1, l[1][1], C.red])
+            data["clear_lines"] = self._clear_lines
+            data["selects"] = self._select_lines
         elif self.previous_mode == "select":
             self.previous_mode = self.mode
-            clears = []
+            self._clear_lines.clear()
             for i in range(28):
-                clears.append([1, i * 11 + 9, 318, i * 11 + 9, C.black])
-            data["clear_lines"] = clears
+                self._clear_lines.append([1, i * 11 + 9, 318, i * 11 + 9, C.black])
+            data["clear_lines"] = self._clear_lines
         return data
     
     def get_using_ram_frame(self):
@@ -929,6 +932,7 @@ def main(*args, **kwargs):
                 s.input_char(c)
                 if s.exit:
                     s.close()
+                    gc.collect()
                     break
                 yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load(s.get_frame(), receiver = display_id)
