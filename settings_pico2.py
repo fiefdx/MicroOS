@@ -3,7 +3,7 @@ from micropython import const
 
 cpu_freq = const(250000000)
 messages = const(25)
-conditions = const(20)
+conditions = const(40)
 tasks = const(20)
 
 display_cs = Pin(13, Pin.OUT, value = 1)
