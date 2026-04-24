@@ -168,10 +168,10 @@ class Task(object):
         cls.id_count += 1
         return cls.id_count
 
-    def __init__(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False):
-        self.load(func, name, condition, task_id, args, kwargs, need_to_clean, reset_sys_path, processed)
+    def __init__(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False, without_condition = True):
+        self.load(func, name, condition, task_id, args, kwargs, need_to_clean, reset_sys_path, processed, without_condition)
 
-    def load(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False):
+    def load(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False, without_condition = False):
         args = args if args else ()
         kwargs = kwargs if kwargs else {}
         need_to_clean = need_to_clean if need_to_clean else []
@@ -180,9 +180,9 @@ class Task(object):
         self.msgs = []
         self.msgs_senders = []
         self.func = func(self, name, *args, **kwargs) if func else None
-        if hasattr(self, "condition") and self.condition:
-            self.condition.release()
-        self.condition = condition if condition else Condition.get()
+        self.condition = None
+        if not without_condition:
+            self.condition = condition if condition else Condition.get()
         self.need_to_clean = need_to_clean
         self.reset_sys_path = reset_sys_path
         self.processed = processed

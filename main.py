@@ -33,8 +33,8 @@ from lib.scheduler import Scheduler, Condition, Task, Message
 from lib.common import Resource, Time, exists, mkdirs, KEYS_MAP
 from lib.shell import Shell
 from lib.keyboard import Keyboard
-# import settings_pico2 as settings
-import settings_esp32s2 as settings
+import settings_pico2 as settings
+# import settings_esp32s2 as settings
 from lib import ntp
 ntp.ntp_delta = settings.ntp_delta
 if hasattr(settings, "rtc_sda"):
