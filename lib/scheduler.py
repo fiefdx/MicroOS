@@ -180,6 +180,8 @@ class Task(object):
         self.msgs = []
         self.msgs_senders = []
         self.func = func(self, name, *args, **kwargs) if func else None
+        if hasattr(self, "condition") and self.condition:
+            self.condition.release()
         self.condition = condition if condition else Condition.get()
         self.need_to_clean = need_to_clean
         self.reset_sys_path = reset_sys_path
