@@ -2,6 +2,7 @@ back_up
 build
 __pycache__
 logs
+AGENTS.md
 .DS_Store
 .cache
 .chat_history
@@ -14,3 +15,4 @@ logs
 *.txt
 *.mpy
 *.wav
+*.pyc
