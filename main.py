@@ -48,6 +48,8 @@ if hasattr(settings, "rtc_sda"):
 sys.path.insert(0, "/bin")
 sys.path.append("/")
 
+tile_defs = {}  # cache for tile bitmaps used by commands like connect4
+
 if machine:
     if os.uname().nodename == "esp32":
         machine.freq(settings.cpu_freq)
@@ -184,15 +186,61 @@ def render_rects(name, msg, lcd):
     for rect in msg.content[name]:
         x, y, w, h, color = rect
         lcd.rect(x, y, w, h, color)
-        
-        
+
+# ---------------------------------------------------------------
+# Connect4 specific renderers (tiles & objects)
+# ---------------------------------------------------------------
+
+def render_tiles(name, msg, lcd):
+    """Render a grid of tiles.
+    Expected schema in msg.content[name]:
+        {
+            "data": [[tile_id,...], ...],   # 2-D array matching board size
+            "width": int,                    # board columns (7)
+            "height": int,                   # board rows (6)
+            "size_w": int,                   # pixel size per tile (ignored - we use bitmap size)
+            "size_h": int,
+            "offset_x": int,
+            "offset_y": int,
+        }
+    """
+    spec = msg.content[name]
+    data = spec["data"]
+    offset_x = spec.get("offset_x", 0)
+    offset_y = spec.get("offset_y", 0)
+    # Tile bitmap size is taken from the cached definition
+    for row_idx, row in enumerate(data):
+        for col_idx, tile_id in enumerate(row):
+            tile_info = tile_defs.get(tile_id)
+            if tile_info:
+                fb = tile_info["fb"]
+                w = tile_info["w"]
+                h = tile_info["h"]
+                x = offset_x + col_idx * w
+                y = offset_y + row_idx * h
+                lcd.blit(fb, x, y)
+
+def render_objects(name, msg, lcd):
+    """Render moving objects (e.g. falling disc).
+    Expected schema: list of dicts with keys "id", "x", "y".
+    """
+    for obj in msg.content[name]:
+        tile_id = obj["id"]
+        tile_info = tile_defs.get(tile_id)
+        if tile_info:
+            fb = tile_info["fb"]
+            lcd.blit(fb, obj["x"], obj["y"])
+
+
+
 RENDER_TABLE = {
     "bricks": render_bricks,
     "texts":  render_texts,
     "lines":  render_lines,
     "rects":  render_rects,
+    "tiles":  render_tiles,
+    "objects": render_objects,
 }
-
 
 def render(category, msg, lcd, refresh):
     name, render_type = category
@@ -235,6 +283,19 @@ def display(task, name, scheduler = None):
             while True:
                 try:
                     refresh = False
+                    # ---- Connect4 tile handling --------------------------------------------
+                    if "update_tiles" in msg.content:
+                        tile_defs.clear()
+                        for tile in msg.content["update_tiles"]:
+                            tile_id = tile["id"]
+                            body = tile["body"]
+                            fb = framebuf.FrameBuffer(
+                                bytearray(body["tile"]),
+                                body["width"],
+                                body["height"],
+                                framebuf.MONO_HLSB)
+                            tile_defs[tile_id] = {"fb": fb, "w": body["width"], "h": body["height"]}
+                    # -----------------------------------------------------------------------
                     if "clear" in msg.content:
                         fill(black)
                     if "frame" in msg.content:                   
@@ -511,6 +572,7 @@ def shell(task, name, shell_id = 0, scheduler = None, display_id = None, storage
 def keyboard_input(task, name, scheduler = None, interval = 50, display_id = None):
     k = Keyboard(settings.keyboard_scl, settings.keyboard_sda, i2c = settings.keyboard_i2c, freq = settings.keyboard_baudrate)    
     Resource.keyboard = k
+    scheduler.keyboard = k  # expose keyboard for commands like connect4
     condition_get = Condition.get
     msg_get = Message.get
     task_get_msg = task.get_message
@@ -548,22 +610,26 @@ def keyboard_input(task, name, scheduler = None, interval = 50, display_id = Non
                         if enable_sound:
                             yield beep()
                             task_get_msg().release()
-                        yield from switch_shell(0)
+                        for _ in switch_shell(0):
+                            yield _
                     elif code == b'\x82': # F2
                         if enable_sound:
                             yield beep()
                             task_get_msg().release()
-                        yield from switch_shell(1)
+                        for _ in switch_shell(1):
+                            yield _
                     elif code == b'\x86': # F6
                         if enable_sound:
                             yield beep()
                             task_get_msg().release()
-                        yield from switch_shell(2)
+                        for _ in switch_shell(2):
+                            yield _
                     elif code == b'\x87': # F7
                         if enable_sound:
                             yield beep()
                             task_get_msg().release()
-                        yield from switch_shell(3)
+                        for _ in switch_shell(3):
+                            yield _
                     elif code == b'\r':
                         enable_sound = not enable_sound
                         if enable_sound:
