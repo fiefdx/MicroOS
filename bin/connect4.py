@@ -9,6 +9,7 @@ from io import StringIO
 from lib.shell import Shell
 from lib.scheduler import Condition, Message
 from lib.common import exists, path_join, isfile, isdir, ticks_ms
+from lib.display import Colors as C
 
 coroutine = True
 
@@ -333,8 +334,8 @@ class Game(object):
         color, x, y = self.disc.get_frame()
         if color is not None:
             objects.append({"x": int(x * 17 + 10), "y": int(y * 17 + 5), "id": color})
-        black_info = {"s": "P1(black)" + (turn if self.turn == self.black else "         "), "c": " ", "x": 136, "y": 25}
-        white_info = {"s": "P2(white)" + (turn if self.turn == self.white else "         "), "c": " ", "x": 136, "y": 33}
+        black_info = {"s": "P1(black)" + (turn if self.turn == self.black else "         "), "c": 18, "x": 136, "y": 25}
+        white_info = {"s": "P2(white)" + (turn if self.turn == self.white else "         "), "c": 18, "x": 136, "y": 33}
         if self.over:
             if self.win == self.black:
                 black_info["s"] = "P1(black)-WIN     "
@@ -343,24 +344,24 @@ class Game(object):
             else:
                 black_info["s"] = "P1(black)-TIE     "
                 white_info["s"] = "P2(white)-TIE     "
-        texts = [{"s": "1", "c": " ", "x": 16, "y": 112},
-                 {"s": "2", "c": " ", "x": 33, "y": 112},
-                 {"s": "3", "c": " ", "x": 50, "y": 112},
-                 {"s": "4", "c": " ", "x": 67, "y": 112},
-                 {"s": "5", "c": " ", "x": 84, "y": 112},
-                 {"s": "6", "c": " ", "x": 101, "y": 112},
-                 {"s": "7", "c": " ", "x": 118, "y": 112},
-                 {"s": "Status", "c": " ", "x": 172, "y": 10},
+        texts = [{"s": "1", "c": 1, "x": 16, "y": 112},
+                 {"s": "2", "c": 1, "x": 33, "y": 112},
+                 {"s": "3", "c": 1, "x": 50, "y": 112},
+                 {"s": "4", "c": 1, "x": 67, "y": 112},
+                 {"s": "5", "c": 1, "x": 84, "y": 112},
+                 {"s": "6", "c": 1, "x": 101, "y": 112},
+                 {"s": "7", "c": 1, "x": 118, "y": 112},
+                 {"s": "Status", "c": 6, "x": 172, "y": 10},
                  black_info,
                  white_info,
-                 {"s": "black won: %d  " % self.stats[self.black], "c": " ", "x": 136, "y": 41},
-                 {"s": "white won: %d  " % self.stats[self.white], "c": " ", "x": 136, "y": 49},
-                 {"s": "tie:       %d  " % self.stats[self.empty], "c": " ", "x": 136, "y": 57},
-                 {"s": "Think", "c": " ", "x": 175, "y": 75},
-                 {"s": "time:  %.3fs   " % self.think_use_time, "c": " ", "x": 136, "y": 90},
-                 {"s": "black: %d/%d  " % (self.think[self.black], self.think_games), "c": " ", "x": 136, "y": 98},
-                 {"s": "white: %d/%d  " % (self.think[self.white], self.think_games), "c": " ", "x": 136, "y": 106},
-                 {"s": "tie:   %d/%d  " % (self.think[self.empty], self.think_games), "c": " ", "x": 136, "y": 114},]
+                 {"s": "black won: %d  " % self.stats[self.black], "c": 16, "x": 136, "y": 41},
+                 {"s": "white won: %d  " % self.stats[self.white], "c": 16, "x": 136, "y": 49},
+                 {"s": "tie:       %d  " % self.stats[self.empty], "c": 16, "x": 136, "y": 57},
+                 {"s": "Think", "c": 6, "x": 175, "y": 75},
+                 {"s": "time:  %.3fs   " % self.think_use_time, "c": 16, "x": 136, "y": 90},
+                 {"s": "black: %d/%d  " % (self.think[self.black], self.think_games), "c": 16, "x": 136, "y": 98},
+                 {"s": "white: %d/%d  " % (self.think[self.white], self.think_games), "c": 16, "x": 136, "y": 106},
+                 {"s": "tie:   %d/%d  " % (self.think[self.empty], self.think_games), "c": 16, "x": 136, "y": 114},]
         return {
             "render": (("rects", "rects"), ("lines", "lines"), ("tiles", "tiles"), ("objects", "objects"), ("texts", "texts")),
             "tiles": {
@@ -385,11 +386,11 @@ class Game(object):
                       [94, 5, 94, 105, 1],
                       [111, 5, 111, 105, 1]],
             "rects": [[9, 4, 120, 120, 1],
-                      [6, 1, 245, 126, 1],
-                      [131, 4, 117, 63, 1],
-                      [131, 4, 117, 18, 1],
-                      [131, 69, 117, 55, 1],
-                      [131, 69, 117, 18, 1],],
+                      [6, 1, 285, 126, 1],
+                      [131, 4, 157, 63, 1],
+                      [131, 4, 157, 18, 1],
+                      [131, 69, 157, 55, 1],
+                      [131, 69, 157, 18, 1],],
             "objects": objects,
             "texts": texts,
         }
@@ -406,7 +407,7 @@ def main(*args, **kwargs):
     shell.enable_cursor = False
     shell.scheduler.keyboard.scan_rows = 5
     tiles = [
-        {"id": 160, "body": {
+        {"id": 161, "body": {
             "tile": [
                 0b00000000,0b00000000,
                 0b00001111,0b11110000,
@@ -426,7 +427,7 @@ def main(*args, **kwargs):
                 0b00000000,0b00000000],
             "width": 16, "height": 16
         }},
-        {"id": 161, "body": {
+        {"id": 160, "body": {
             "tile": [
                 0b00000000,0b00000000,
                 0b00001111,0b11110000,

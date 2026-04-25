@@ -48,8 +48,6 @@ if hasattr(settings, "rtc_sda"):
 sys.path.insert(0, "/bin")
 sys.path.append("/")
 
-tile_defs = {}  # cache for tile bitmaps used by commands like connect4
-
 if machine:
     if os.uname().nodename == "esp32":
         machine.freq(settings.cpu_freq)
@@ -59,6 +57,8 @@ if machine:
 if microcontroller:
     microcontroller.cpu.frequency = 250000000
     print("freq: %s mhz" % (microcontroller.cpu.frequency / 1000000))
+
+tile_defs = {}  # cache for tile bitmaps
 
 
 def monitor(task, name, scheduler = None, display_id = None):
@@ -187,9 +187,6 @@ def render_rects(name, msg, lcd):
         x, y, w, h, color = rect
         lcd.rect(x, y, w, h, color)
 
-# ---------------------------------------------------------------
-# Connect4 specific renderers (tiles & objects)
-# ---------------------------------------------------------------
 
 def render_tiles(name, msg, lcd):
     """Render a grid of tiles.
@@ -214,8 +211,8 @@ def render_tiles(name, msg, lcd):
             tile_info = tile_defs.get(tile_id)
             if tile_info:
                 fb = tile_info["fb"]
-                w = tile_info["w"]
-                h = tile_info["h"]
+                w = spec["size_w"]
+                h = spec["size_h"]
                 x = offset_x + col_idx * w
                 y = offset_y + row_idx * h
                 lcd.blit(fb, x, y)
@@ -283,19 +280,20 @@ def display(task, name, scheduler = None):
             while True:
                 try:
                     refresh = False
-                    # ---- Connect4 tile handling --------------------------------------------
                     if "update_tiles" in msg.content:
                         tile_defs.clear()
                         for tile in msg.content["update_tiles"]:
                             tile_id = tile["id"]
                             body = tile["body"]
-                            fb = framebuf.FrameBuffer(
-                                bytearray(body["tile"]),
-                                body["width"],
-                                body["height"],
-                                framebuf.MONO_HLSB)
-                            tile_defs[tile_id] = {"fb": fb, "w": body["width"], "h": body["height"]}
-                    # -----------------------------------------------------------------------
+                            fbuf_mono = framebuf.FrameBuffer(bytearray(body["tile"]), body["width"], body["height"], framebuf.MONO_HLSB)
+                            gs8_buf = bytearray(body["width"] * body["height"])
+                            fbuf_gs8 = framebuf.FrameBuffer(gs8_buf, body["width"], body["height"], framebuf.GS8)
+                            palette = framebuf.FrameBuffer(bytearray(2), 2, 1, framebuf.GS8)
+                            palette.pixel(0, 0, 255)   # 0-bit -> White (0xFF)
+                            palette.pixel(1, 0, 0) # 1-bit -> Black (0x00)
+                            # Blit mono to GS8 using the palette
+                            fbuf_gs8.blit(fbuf_mono, 0, 0, -1, palette)
+                            tile_defs[tile_id] = {"fb": fbuf_gs8, "w": body["width"], "h": body["height"]}
                     if "clear" in msg.content:
                         fill(black)
                     if "frame" in msg.content:                   
