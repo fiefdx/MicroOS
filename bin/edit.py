@@ -75,6 +75,29 @@ class EditShell(object):
         # Reusable lists to reduce memory allocations
         self._clear_lines = []
         self._select_lines = []
+        # Bound-method dispatch tables for O(1) key lookup
+        self._edit_dispatch = {
+            "\n": self._on_enter, "\b": self._on_backspace,
+            "UP": self._on_cursor_up, "DN": self._on_cursor_down,
+            "SUP": self._on_cursor_up, "SDN": self._on_cursor_down,
+            "BX": self._on_page_up, "BB": self._on_page_down,
+            "LT": self._on_cursor_left, "RT": self._on_cursor_right,
+            "BY": self._on_page_left, "BA": self._on_page_right,
+            "SAVE": self._on_save, "Ctrl-A": self._on_redo,
+            "Ctrl-Z": self._on_undo, "Ctrl-B": self._on_select_start,
+            "Ctrl-V": self._on_paste, "Ctrl-Q": self._on_chat,
+            "Ctrl-G": self._on_goto_start, "Ctrl-/": self._on_comment_line,
+            "ES": self._on_escape,
+        }
+        self._select_dispatch = {
+            "UP": self._on_cursor_up, "DN": self._on_cursor_down,
+            "SUP": self._on_cursor_up, "SDN": self._on_cursor_down,
+            "BX": self._on_page_up, "BB": self._on_page_down,
+            "LT": self._on_cursor_left, "RT": self._on_cursor_right,
+            "BY": self._on_page_left, "BA": self._on_page_right,
+            "Ctrl-C": self._on_copy, "Ctrl-X": self._on_cut,
+            "Ctrl-/": self._on_comment_select, "ES": self._on_escape_select,
+        }
         
     def set_ram(self, ram):
         self.cache = [] if ram else ListFile(path_join(self.cache_path, "edit_cache.%d.json" % self.id), shrink_threshold = 1024000) # []
@@ -86,194 +109,212 @@ class EditShell(object):
     def input_char(self, c):
         if c == "refresh":
             self.frame_force_update = True
-        if self.mode == "edit":
-            if len(self.cache) == 0:
-                self.cache.append("")
-            if c == "\n":
-                self.status = "changed"
-                self.exit_count = 0
-                before_enter = self.cache[self.cursor_row][:self.cursor_col + self.offset_col]
-                after_enter = self.cache[self.cursor_row][self.cursor_col + self.offset_col:]
-                col = 0
-                if self.highlight:
-                    tokens = tokenize(before_enter)
-                    if len(tokens) > 1:
-                        if tokens[0][0] == TOKEN_WS and tokens[0][1].isspace():
-                            col += len(tokens[0][1])
-                        if tokens[-1][0] == TOKEN_OP and tokens[-1][1] in (":", "(", "[", "{"):
-                            col += 4
-                        after_enter = " " * col + after_enter
-                    elif len(tokens) > 0:
-                        if tokens[0][0] == TOKEN_WS and tokens[0][1].isspace():
-                            after_enter = tokens[0][1] + after_enter
-                            col += len(tokens[0][1])
-                self.cache[self.cursor_row] = before_enter
-                self.edit_last_line = self.cursor_row
-                self.cursor_row += 1
-                op = None
-                if len(self.cache) > self.cursor_row:
-                    self.cache.insert(self.cursor_row, after_enter)
-                    op = ["insert", self.cursor_row - 1, before_enter, after_enter]
-                else:
-                    self.cache.append(after_enter)
-                    op = ["append", self.cursor_row - 1, before_enter, after_enter]
-                self.edit_redo_cache.clear()
-                if self.cursor_row > self.display_offset_row + self.cache_size - 1:
-                    self.display_offset_row += 1
-                self.cursor_col = 0
-                self.offset_col = 0
-                op.append((self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col))
-                self.edit_history.append(op)
-                if col > 0:
-                    self.cursor_move_right(col)
-                self.frame_force_update = True
-                if self.highlight:
-                    self.highlight_cache.clear()
-            elif c == "\b":
-                self.status = "changed"
-                self.exit_count = 0
-                op = None
-                if len(self.cache[self.cursor_row]) == 0:
-                    self.edit_last_line = self.cursor_row
-                    self.edit_redo_cache.clear()
-                    self.cache.pop(self.cursor_row)
-                    self.cursor_move_left()
-                    self.edit_history.append(["delete", self.cursor_row, "", (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)])
-                else:
-                    delete_before = self.cache[self.cursor_row][:self.cursor_col + self.offset_col]
-                    if len(delete_before) > 0:
-                        self.append_edit_operation()
-                        self.cache[self.cursor_row] = self.cache[self.cursor_row][:self.cursor_col + self.offset_col - 1] + self.cache[self.cursor_row][self.cursor_col + self.offset_col:]
-                        self.cursor_move_left()
-                    else:
-                        self.append_edit_operation()
-                        if self.cursor_row > 0:
-                            self.edit_last_line = self.cursor_row
-                            current_line = self.cache.pop(self.cursor_row)
-                            op = ["merge", self.cursor_row, current_line, "", (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)]
-                            self.edit_redo_cache.clear()
-                            self.cursor_move_left()
-                            op[3] = self.cache[self.cursor_row]
-                            self.cache[self.cursor_row] += current_line
-                            self.edit_history.append(op)
-                self.frame_force_update = True
-                if self.highlight:
-                    self.highlight_cache.clear()
-            elif c == "UP" or c == "SUP":
-                self.cursor_move_up()
-            elif c == "DN" or c == "SDN":
-                self.cursor_move_down()
-            elif c in ("BX"):
-                self.page_up()
-            elif c in ("BB"):
-                self.page_down()
-            elif c == "LT":
-                self.cursor_move_left()
-            elif c == "RT":
-                self.cursor_move_right()
-            elif c == "BY":
-                self.page_left()
-            elif c == "BA":
-                self.page_right()
-            elif c == "SAVE":
-                fp = open(self.file_path, "w")
-                for line in self.cache:
-                    fp.write(line + "\n")
-                fp.close()
-                self.status = "saved"
-                self.frame_force_update = True
-            elif c == "Ctrl-A":
-                self.redo()
-                self.frame_force_update = True
-            elif c == "Ctrl-Z":
-                self.undo()
-                self.frame_force_update = True
-            elif c == "Ctrl-B":
-                self.mode = "select"
-                self.select_start_row = self.cursor_row
-                self.select_start_col = self.cursor_col + self.offset_col
-                self.frame_force_update = True
-            elif c == "Ctrl-V":
-                self.paste()
-                self.frame_force_update = True
-            elif c == "Ctrl-Q":
-                self.generate_with_chat()
-                self.frame_force_update = True
-            elif c == "Ctrl-G":
-                self.mode = "goto"
-                self.goto_str = ""
-                self.frame_force_update = True
-            elif c == "Ctrl-/":
-                if self.comment_one_line():
-                    self.status = "changed"
-                    self.exit_count = 0
-                    self.frame_force_update = True
-            elif c == "ES":
-                if self.status == "saved":
-                    self.exit = True
-                else:
-                    self.exit_count += 1
-                    if self.exit_count >= 3:
-                        self.exit = True
+            return
+        mode = self.mode
+        if mode == "edit":
+            handler = self._edit_dispatch.get(c)
+            if handler:
+                handler()
             elif len(c) == 1:
-                self.status = "changed"
-                self.exit_count = 0
+                self._on_char_input(c)
+        elif mode == "select":
+            handler = self._select_dispatch.get(c)
+            if handler:
+                handler()
+            self.frame_force_update = True
+        elif mode == "goto":
+            self._handle_goto_key(c)
+
+    def _handle_goto_key(self, c):
+        if c.isdigit():
+            self.goto_str += c
+        elif c == "\b":
+            if self.goto_str:
+                self.goto_str = self.goto_str[:-1]
+        elif c == "\n":
+            self._exit_goto()
+            if self.goto_str:
+                self.goto(int(self.goto_str))
+        elif c == "ES":
+            self._exit_goto()
+        self.frame_force_update = True
+
+    def _exit_goto(self):
+        self.previous_mode = self.mode
+        self.mode = "edit"
+
+    # --- Edit mode handlers ---
+    def _on_enter(self):
+        self.status = "changed"
+        self.exit_count = 0
+        if len(self.cache) == 0:
+            self.cache.append("")
+        before = self.cache[self.cursor_row][:self.cursor_col + self.offset_col]
+        after = self.cache[self.cursor_row][self.cursor_col + self.offset_col:]
+        col = 0
+        if self.highlight:
+            tokens = tokenize(before)
+            if len(tokens) > 1:
+                if tokens[0][0] == TOKEN_WS and tokens[0][1].isspace():
+                    col += len(tokens[0][1])
+                if tokens[-1][0] == TOKEN_OP and tokens[-1][1] in (":", "(", "[", "{"):
+                    col += 4
+                after = " " * col + after
+            elif len(tokens) > 0:
+                if tokens[0][0] == TOKEN_WS and tokens[0][1].isspace():
+                    after = tokens[0][1] + after
+                    col += len(tokens[0][1])
+        self.cache[self.cursor_row] = before
+        self.edit_last_line = self.cursor_row
+        self.cursor_row += 1
+        if len(self.cache) > self.cursor_row:
+            self.cache.insert(self.cursor_row, after)
+            op = ["insert", self.cursor_row - 1, before, after]
+        else:
+            self.cache.append(after)
+            op = ["append", self.cursor_row - 1, before, after]
+        self.edit_redo_cache.clear()
+        if self.cursor_row > self.display_offset_row + self.cache_size - 1:
+            self.display_offset_row += 1
+        self.cursor_col = 0
+        self.offset_col = 0
+        op.append((self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col))
+        self.edit_history.append(op)
+        if col > 0:
+            self.cursor_move_right(col)
+        self.frame_force_update = True
+        self._clear_highlight()
+
+    def _on_backspace(self):
+        self.status = "changed"
+        self.exit_count = 0
+        line = self.cache[self.cursor_row]
+        if len(line) == 0:
+            self.edit_last_line = self.cursor_row
+            self.edit_redo_cache.clear()
+            self.cache.pop(self.cursor_row)
+            self.cursor_move_left()
+            self.edit_history.append(["delete", self.cursor_row, "",
+                (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)])
+        else:
+            delete_before = line[:self.cursor_col + self.offset_col]
+            if len(delete_before) > 0:
                 self.append_edit_operation()
-                n = 1
-                if c == "\t":
-                    c = "    "
-                    n = 4
-                self.cache[self.cursor_row] = self.cache[self.cursor_row][:self.cursor_col + self.offset_col] + c + self.cache[self.cursor_row][self.cursor_col + self.offset_col:]
-                self.cursor_move_right(n)
-                self.frame_force_update = True
-                if self.highlight:
-                    self.highlight_cache.clear()
-        elif self.mode == "select":
-            if c == "UP" or c == "SUP":
-                self.cursor_move_up()
-            elif c == "DN" or c == "SDN":
-                self.cursor_move_down()
-            elif c in ("BX"):
-                self.page_up()
-            elif c in ("BB"):
-                self.page_down()
-            elif c == "LT":
+                self.cache[self.cursor_row] = line[:self.cursor_col + self.offset_col - 1] + line[self.cursor_col + self.offset_col:]
                 self.cursor_move_left()
-            elif c == "RT":
-                self.cursor_move_right()
-            elif c == "BY":
-                self.page_left()
-            elif c == "BA":
-                self.page_right()
-            elif c == "Ctrl-C":
-                self.previous_mode = self.mode
-                self.mode = "edit"
-                self.copy_into_clipboard()
-            elif c == "Ctrl-X":
-                self.previous_mode = self.mode
-                self.mode = "edit"
-                self.copy_into_clipboard(cut = True)
-            elif c == "Ctrl-/":
-                self.comment_select_lines()
-            elif c == "ES":
-                self.previous_mode = self.mode
-                self.mode = "edit"
+            else:
+                self.append_edit_operation()
+                if self.cursor_row > 0:
+                    self.edit_last_line = self.cursor_row
+                    current_line = self.cache.pop(self.cursor_row)
+                    op = ["merge", self.cursor_row, current_line, "",
+                        (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)]
+                    self.edit_redo_cache.clear()
+                    self.cursor_move_left()
+                    op[3] = self.cache[self.cursor_row]
+                    self.cache[self.cursor_row] += current_line
+                    self.edit_history.append(op)
+        self.frame_force_update = True
+        self._clear_highlight()
+
+    def _on_cursor_up(self):
+        self.cursor_move_up()
+    def _on_cursor_down(self):
+        self.cursor_move_down()
+    def _on_page_up(self):
+        self.page_up()
+    def _on_page_down(self):
+        self.page_down()
+    def _on_cursor_left(self):
+        self.cursor_move_left()
+    def _on_cursor_right(self):
+        self.cursor_move_right()
+    def _on_page_left(self):
+        self.page_left()
+    def _on_page_right(self):
+        self.page_right()
+
+    def _on_save(self):
+        fp = open(self.file_path, "w")
+        for line in self.cache:
+            fp.write(line + "\n")
+        fp.close()
+        self.status = "saved"
+        self.frame_force_update = True
+
+    def _on_redo(self):
+        self.redo()
+        self.frame_force_update = True
+    def _on_undo(self):
+        self.undo()
+        self.frame_force_update = True
+
+    def _on_select_start(self):
+        self.mode = "select"
+        self.select_start_row = self.cursor_row
+        self.select_start_col = self.cursor_col + self.offset_col
+        self.frame_force_update = True
+
+    def _on_paste(self):
+        self.paste()
+        self.frame_force_update = True
+
+    def _on_chat(self):
+        self.generate_with_chat()
+        self.frame_force_update = True
+
+    def _on_goto_start(self):
+        self.mode = "goto"
+        self.goto_str = ""
+        self.frame_force_update = True
+
+    def _on_comment_line(self):
+        if self.comment_one_line():
+            self.status = "changed"
+            self.exit_count = 0
             self.frame_force_update = True
-        elif self.mode == "goto":
-            if c.isdigit():
-                self.goto_str += c
-            elif c == "\b":
-                if len(self.goto_str) > 0:
-                    self.goto_str = self.goto_str[:-1]
-            elif c == "\n":
-                self.previous_mode = self.mode
-                self.mode = "edit"
-                if len(self.goto_str) > 0:
-                    self.goto(int(self.goto_str))
-            elif c == "ES":
-                self.previous_mode = self.mode
-                self.mode = "edit"
-            self.frame_force_update = True
+
+    def _on_escape(self):
+        if self.status == "saved":
+            self.exit = True
+        else:
+            self.exit_count += 1
+            if self.exit_count >= 3:
+                self.exit = True
+
+    def _on_char_input(self, c):
+        self.status = "changed"
+        self.exit_count = 0
+        self.append_edit_operation()
+        if c == "\t":
+            c = "    "
+            n = 4
+        else:
+            n = 1
+        self.cache[self.cursor_row] = (self.cache[self.cursor_row][:self.cursor_col + self.offset_col]
+                                       + c + self.cache[self.cursor_row][self.cursor_col + self.offset_col:])
+        self.cursor_move_right(n)
+        self.frame_force_update = True
+        self._clear_highlight()
+
+    # --- Select mode handlers ---
+    def _on_copy(self):
+        self.previous_mode = self.mode
+        self.mode = "edit"
+        self.copy_into_clipboard()
+    def _on_cut(self):
+        self.previous_mode = self.mode
+        self.mode = "edit"
+        self.copy_into_clipboard(cut = True)
+    def _on_comment_select(self):
+        self.comment_select_lines()
+    def _on_escape_select(self):
+        self.previous_mode = self.mode
+        self.mode = "edit"
+
+    def _clear_highlight(self):
+        if self.highlight:
+            self.highlight_cache.clear()
 
     def append_edit_operation(self):
         if self.cursor_row != self.edit_last_line:
