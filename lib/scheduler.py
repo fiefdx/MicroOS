@@ -80,57 +80,22 @@ class Message(object):
 
 
 class Condition(object):
-    pool = []
-    free_stack = None  # array.array('H') for compact storage
-    free_top = 0       # Stack pointer (number of free items)
+    """Bound to a single Task for its lifetime. No pool needed."""
 
-    @classmethod
-    def init_pool(cls, size = 100):
-        cls.pool.clear()
-        cls.free_stack = array.array('H', range(size))
-        cls.free_top = size
-        for i in range(size):
-            c = Condition(processed = True)
-            c._pool_index = i
-            cls.pool.append(c)
+    def __init__(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False):
+        self.load(code, sleep, send_msgs, wait_msg)
 
     @classmethod
     def get(cls):
-        if cls.free_top == 0:
-            return None
-        cls.free_top -= 1
-        idx = cls.free_stack[cls.free_top]
-        c = cls.pool[idx]
-        c.resume_at = ticks_us()  # Current time in μs, sleep will be converted in load()
-        c.wait_msg = False
-        c.send_msgs.clear()
-        c.processed = False
-        return c
+        """Simple factory — each caller gets a fresh instance."""
+        return cls()
 
-    @classmethod
-    def remain(cls):
-        return cls.free_top
-
-    def __init__(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
-        self.load(code, sleep, send_msgs, wait_msg, processed)
-
-    def load(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False, processed = False):
+    def load(self, code = 0, sleep = 0, send_msgs = None, wait_msg = False):
         self.code = code
         self.resume_at = ticks_add(ticks_us(), sleep * 1000)  # Convert ms to us
         self.send_msgs = send_msgs if send_msgs is not None else []
         self.wait_msg = wait_msg
-        self.processed = processed
         return self
-
-    def release(self):
-        self.code = 0
-        self.resume_at = 0
-        self.send_msgs.clear()
-        self.wait_msg = False
-        self.processed = True
-        # Return to pool using stored index (O(1))
-        Condition.free_stack[Condition.free_top] = self._pool_index
-        Condition.free_top += 1
 
 
 class Task(object):
@@ -168,10 +133,10 @@ class Task(object):
         cls.id_count += 1
         return cls.id_count
 
-    def __init__(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False, without_condition = True):
-        self.load(func, name, condition, task_id, args, kwargs, need_to_clean, reset_sys_path, processed, without_condition)
+    def __init__(self, func, name, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False):
+        self.load(func, name, task_id, args, kwargs, need_to_clean, reset_sys_path, processed)
 
-    def load(self, func, name, condition = None, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False, without_condition = False):
+    def load(self, func, name, task_id = None, args = None, kwargs = None, need_to_clean = None, reset_sys_path = False, processed = False):
         args = args if args else ()
         kwargs = kwargs if kwargs else {}
         need_to_clean = need_to_clean if need_to_clean else []
@@ -180,20 +145,13 @@ class Task(object):
         self.msgs = []
         self.msgs_senders = []
         self.func = func(self, name, *args, **kwargs) if func else None
-        self.condition = None
-        if not without_condition:
-            self.condition = condition if condition else Condition.get()
+        self.condition = Condition.get()  # Each task owns exactly one Condition
         self.need_to_clean = need_to_clean
         self.reset_sys_path = reset_sys_path
         self.processed = processed
         self.cpu_time_ms = 0
         self.cpu_usage = 0
         return self
-
-    def set_condition(self, condition):
-        if self.condition:
-            self.condition.release()
-        self.condition = condition
 
     def put_message(self, message):
         if message.drop_size == 0:
@@ -242,9 +200,7 @@ class Task(object):
         self.msgs.clear()
         self.msgs_senders.clear()
         self.func = None
-        if self.condition:
-            self.condition.release()
-        self.condition = None
+        self.condition = None  # GC'd with task, no pool return needed
         self.need_to_clean.clear()
         self.reset_sys_path = False
         self.processed = True
@@ -367,7 +323,7 @@ class Scheduler(object):
                         self.current = self.tasks.pop()
                         task_start_at = ticks_us()
                         try:
-                            self.current.set_condition(next(self.current.func))
+                            next(self.current.func)  # Generator updates task.condition in place
                             self.tasks.append(self.current)
                             for msg in self.current.condition.send_msgs:
                                 msg.sender = self.current.id
