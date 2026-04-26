@@ -13,12 +13,12 @@ def main(*args, **kwargs):
     args = kwargs["args"]
     shell_id = kwargs["shell_id"]
     try:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": "not implemented yet!"}, receiver = shell_id)
         ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

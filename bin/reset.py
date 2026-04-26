@@ -19,12 +19,12 @@ def main(*args, **kwargs):
     display_id = shell.display_id
     try:
         lines = [" "*42 for i in range(50)]
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True, "output": "\n".join(lines)}, receiver = shell_id)
         ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

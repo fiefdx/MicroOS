@@ -57,7 +57,7 @@ def _usage() -> str:
 def _prompt(task, shell_id, prompt_text) -> "generator":
     """Yield the prompt and then read key-presses until a newline."""
     # Show the prompt (no automatic line-break)
-    yield Condition.get().load(
+    yield task.condition.load(
         sleep=0,
         wait_msg=True,
         send_msgs=[Message.get().load(
@@ -79,7 +79,7 @@ def _prompt(task, shell_id, prompt_text) -> "generator":
             typed += ch
         msg.release()
         # Wait for the next character – this yields back to the scheduler.
-        yield Condition.get().load(sleep=0, wait_msg=True)
+        yield task.condition.load(sleep=0, wait_msg=True)
 
     # `typed` is handed back to the caller via `yield from`.
     return typed
@@ -133,7 +133,7 @@ def main(*args, **kwargs):
         # No arguments -> print the help text.
         # --------------------------------------------------------------
         if not cli_args:
-            yield Condition.get().load(
+            yield task.condition.load(
                 sleep=0,
                 send_msgs=[Message.get().load(
                     {"output": _usage()},
@@ -147,7 +147,7 @@ def main(*args, **kwargs):
             # HELP
             # ------------------------------------------------------
             if subcmd == "help":
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": _usage()},
@@ -178,7 +178,7 @@ def main(*args, **kwargs):
 
                 # Tiny pause so the radio can settle while the scheduler
                 # continues to run other tasks.
-                yield Condition.get().load(sleep=200)
+                yield task.condition.load(sleep=200)
 
                 # ----- REPORT RESULT ----------------------------------------
                 auth_txt = "OPEN" if password == "" else "WPA2-PSK"
@@ -188,7 +188,7 @@ def main(*args, **kwargs):
                     f"Auth mode: {auth_txt}\n"
                     f"IP config: {ip_cfg}"
                 )
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": out_msg},
@@ -201,7 +201,7 @@ def main(*args, **kwargs):
             # ------------------------------------------------------
             elif subcmd == "stop":
                 AP.stop()
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": "AP stopped"},
@@ -233,7 +233,7 @@ def main(*args, **kwargs):
                         f"  GW      : {gw}\n"
                         f"  DNS     : {dns}"
                     )
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": out},
@@ -264,7 +264,7 @@ def main(*args, **kwargs):
                             )
                         out = "\n".join(lines)
 
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": out},
@@ -277,7 +277,7 @@ def main(*args, **kwargs):
             # ------------------------------------------------------
             else:
                 out = f"Unknown sub-command '{subcmd}'. Use 'ap help' for usage."
-                yield Condition.get().load(
+                yield task.condition.load(
                     sleep=0,
                     send_msgs=[Message.get().load(
                         {"output": out},
@@ -297,7 +297,7 @@ def main(*args, **kwargs):
     except Exception as exc:
         # sys.print_exception prints to the console; we only need a string.
         err_msg = f"AP command error: {exc}"
-        yield Condition.get().load(
+        yield task.condition.load(
             sleep=0,
             send_msgs=[Message.get().load(
                 {"output": err_msg},

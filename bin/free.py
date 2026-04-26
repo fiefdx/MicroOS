@@ -20,10 +20,10 @@ def main(*args, **kwargs):
                                                           ram_used / 1024)
         # print(monitor_msg)
         # micropython.mem_info(True)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": monitor_msg}, receiver = shell_id)
         ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(sys.print_exception(e))}, receiver = shell_id)
         ])

@@ -485,7 +485,7 @@ def main(*args, **kwargs):
     shell.enable_cursor = False
 #     shell.scheduler.keyboard.scan_rows = 5
     try:
-        # yield Condition.get().load(sleep = 0, send_msgs = [
+        # yield task.condition.load(sleep = 0, send_msgs = [
         #     Message.get().load({"enabled": False}, receiver = cursor_id)
         # ])
         path = getcwd()
@@ -496,7 +496,7 @@ def main(*args, **kwargs):
         if exists(path):
             explorer = Explorer(path, shell)
             shell.current_shell = explorer
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load(explorer.get_frame(), receiver = display_id)
             ])
             msg = task.get_message()
@@ -512,11 +512,11 @@ def main(*args, **kwargs):
                 msg.release()
                 if explorer.mode == "edit":
                     if explorer.editor.status != "loading":
-                        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                             Message.get().load(explorer.get_frame(), receiver = display_id)
                         ])
                     else: # loading
-                        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                             Message.get().load(explorer.get_editor_init_frame(), receiver = display_id)
                         ])
                         msg = task.get_message()
@@ -527,27 +527,27 @@ def main(*args, **kwargs):
                             explorer.editor.set_ram(False)
                         msg.release()
                         for p in explorer.editor.load_and_calc_total_lines():
-                            yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+                            yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                                 Message.get().load(explorer.get_editor_loading_frame(p), receiver = display_id)
                             ])
-                        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                             Message.get().load(explorer.get_frame(), receiver = display_id)
                         ])
                 else:
-                    yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                    yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                         Message.get().load(explorer.get_frame(), receiver = display_id)
                     ])
                 msg = task.get_message()
                 c = msg.content["msg"]
             msg.release()
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -555,14 +555,14 @@ def main(*args, **kwargs):
         shell.current_shell = None
 #         shell.scheduler.keyboard.scan_rows = 5
         shell.loading = True
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -575,6 +575,6 @@ def main(*args, **kwargs):
         reason = buf.getvalue()
         if reason is None:
             reason = "render failed"
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(reason)}, receiver = shell_id)
         ])

@@ -55,7 +55,7 @@ def main(*args, **kwargs):
                                     frame.append("")
                             if len(frame) == height:
                                 frame.append("%s/%s" % (pos, file_size))
-                                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                                     Message.get().load({"output_part": "\n".join(frame)}, receiver = shell_id)
                                 ])
                                 msg = task.get_message()
@@ -93,7 +93,7 @@ def main(*args, **kwargs):
                                 frame.append("")
                         if len(frame) == height:
                             frame.append("%s/%s" % (pos, file_size))
-                            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                                 Message.get().load({"output_part": "\n".join(frame)}, receiver = shell_id)
                             ])
                             msg = task.get_message()
@@ -126,24 +126,24 @@ def main(*args, **kwargs):
                     pos = fp.tell()
                     line = fp.readline()
                     row += 1
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": ""}, receiver = shell_id)
                 ])
                 shell.enable_cursor = True
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "%s not file/exists!" % path}, receiver = shell_id)
                 ])
                 shell.enable_cursor = True
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
             shell.enable_cursor = True
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])
         shell.enable_cursor = True

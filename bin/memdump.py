@@ -34,14 +34,14 @@ def main(*args, **kwargs):
                     line = buf.readline()
                 f.write("@@@\n")
             result = path
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": sys.print_exception(e)}, receiver = shell_id)
         ])

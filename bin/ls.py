@@ -38,12 +38,12 @@ def main(*args, **kwargs):
             if max_length <= 40:
                 max_length = 40
             line = format_string % ("Name" + " " * (max_length - 11 - 4), "T", "    Size")
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load({"output_part": line}, receiver = shell_id, need_reply = True)
             ])
             task.get_message().release()
             line = "-" * max_length
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load({"output_part": line}, receiver = shell_id, need_reply = True)
             ])
             task.get_message().release()
@@ -58,7 +58,7 @@ def main(*args, **kwargs):
                     n += 1
                     if n == page_size:
                         n = 0
-                        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                             Message.get().load({"output_part": line}, receiver = shell_id)
                         ])
                         msg = task.get_message()
@@ -66,14 +66,14 @@ def main(*args, **kwargs):
                             if msg.content["msg"] == "\n":
                                 break
                             msg.release()
-                            yield Condition.get().load(sleep = 0, wait_msg = True)
+                            yield task.condition.load(sleep = 0, wait_msg = True)
                             msg = task.get_message()
                         if msg.content["msg"] == "ES":
                             exit = True
                             break
                         msg.release()
                     else:
-                        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                             Message.get().load({"output_part": line}, receiver = shell_id, need_reply = True)
                         ])
                         task.get_message().release()
@@ -87,7 +87,7 @@ def main(*args, **kwargs):
                         n += 1
                         if n == page_size:
                             n = 0
-                            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                                 Message.get().load({"output_part": line}, receiver = shell_id)
                             ])
                             msg = task.get_message()
@@ -95,38 +95,38 @@ def main(*args, **kwargs):
                                 if msg.content["msg"] == "\n":
                                     break
                                 msg.release()
-                                yield Condition.get().load(sleep = 0, wait_msg = True)
+                                yield task.condition.load(sleep = 0, wait_msg = True)
                                 msg = task.get_message()
                             if msg.content["msg"] == "ES":
                                 exit = True
                                 break
                             msg.release()
                         else:
-                            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                                 Message.get().load({"output_part": line}, receiver = shell_id, need_reply = True)
                             ])
                             task.get_message().release()
             if not exit:
                 line = "-" * max_length
-                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load({"output_part": line}, receiver = shell_id, need_reply = True)
                 ])
                 line = "Total: %s, Dirs: %s, Files: %s" % (dirs_total + files_total, dirs_total, files_total)
-                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load({"output": line}, receiver = shell_id, need_reply = True)
                 ])
                 task.get_message().release()
             else:
-                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load({"output": ""}, receiver = shell_id, need_reply = True)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

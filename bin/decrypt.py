@@ -24,27 +24,27 @@ def main(*args, **kwargs):
                 success = f.open_source_file()
                 if success is True:
                     for m in f.decrypt(key = password):
-                        yield Condition.get().load(sleep = 0, send_msgs = [
+                        yield task.condition.load(sleep = 0, send_msgs = [
                             Message.get().load({"output_part": m}, receiver = shell_id)
                         ])
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": ""}, receiver = shell_id)
                     ])
                 else:
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": success}, receiver = shell_id)
                     ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "%s not exists!" % file_path}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

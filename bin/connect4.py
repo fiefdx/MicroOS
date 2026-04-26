@@ -485,17 +485,17 @@ def main(*args, **kwargs):
             height = 20
             size = 6
             frame_interval = 30
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"clear": True}, receiver = display_id)
             ])
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"update_tiles": tiles}, receiver = display_id)
             ])
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"enabled": False}, receiver = cursor_id)
             ])
             game = Game(think_games, game_mode)
-            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                 Message.get().load(game.get_frame(), receiver = display_id)
             ])
             if game_mode == "white":
@@ -503,11 +503,11 @@ def main(*args, **kwargs):
                 y = game.drop_disc(x)
                 if y != -1:
                     for i in range(game.disc.frames()):
-                        yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                        yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                             Message.get().load(game.get_frame(), receiver = display_id)
                         ])
                     game.turn_place_disc(x)
-                    yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                    yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                         Message.get().load(game.get_frame(), receiver = display_id)
                     ])
             
@@ -523,11 +523,11 @@ def main(*args, **kwargs):
                             y = game.drop_disc(int(c) - 1)
                             if y != -1:
                                 for i in range(game.disc.frames()):
-                                    yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                    yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                         Message.get().load(game.get_frame(), receiver = display_id)
                                     ])
                                 game.turn_place_disc(int(c) - 1)
-                                yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                     Message.get().load(game.get_frame(), receiver = display_id)
                                 ])
                                 if not game.over and (game_mode == "black" or game_mode == "white"):
@@ -535,11 +535,11 @@ def main(*args, **kwargs):
                                     y = game.drop_disc(x)
                                     if y != -1:
                                         for i in range(game.disc.frames()):
-                                            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                                 Message.get().load(game.get_frame(), receiver = display_id)
                                             ])
                                         game.turn_place_disc(x)
-                                        yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                        yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                             Message.get().load(game.get_frame(), receiver = display_id)
                                         ])
                     elif c == "c":
@@ -547,16 +547,16 @@ def main(*args, **kwargs):
                         y = game.drop_disc(x)
                         if y != -1:
                             for i in range(game.disc.frames()):
-                                yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                     Message.get().load(game.get_frame(), receiver = display_id)
                                 ])
                             game.turn_place_disc(x)
-                            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                 Message.get().load(game.get_frame(), receiver = display_id)
                             ])
                 if c == "r":
                     game.restart()
-                    yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                    yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                         Message.get().load(game.get_frame(), receiver = display_id)
                     ])
                     if game_mode == "white":
@@ -564,11 +564,11 @@ def main(*args, **kwargs):
                         y = game.drop_disc(x)
                         if y != -1:
                             for i in range(game.disc.frames()):
-                                yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                                yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                     Message.get().load(game.get_frame(), receiver = display_id)
                                 ])
                             game.turn_place_disc(x)
-                            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                                 Message.get().load(game.get_frame(), receiver = display_id)
                             ])
                 msg = task.get_message()
@@ -577,15 +577,15 @@ def main(*args, **kwargs):
                     msg.release()
                 else:
                     c = None
-                yield Condition.get().load(sleep = 0)
+                yield task.condition.load(sleep = 0)
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "invalid parameters"}, receiver = shell_id)
             ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -593,14 +593,14 @@ def main(*args, **kwargs):
         shell.current_shell = None
         shell.scheduler.keyboard.scan_rows = 5
         shell.loading = True
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -611,6 +611,6 @@ def main(*args, **kwargs):
         reason = sys.print_exception(e)
         if reason is None:
             reason = "render failed"
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(reason)}, receiver = shell_id)
         ])

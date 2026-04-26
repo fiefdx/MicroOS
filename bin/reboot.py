@@ -14,12 +14,12 @@ def main(*args, **kwargs):
     shell_id = kwargs["shell_id"]
     try:
         soft_reset() 
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": "reboot ..."}, receiver = shell_id)
         ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

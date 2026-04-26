@@ -29,7 +29,7 @@ def main(*args, **kwargs):
     args = kwargs["args"]
     
     if len(args) == 0 or "--h" in args:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": doc}, receiver = shell_id)
         ])
         return
@@ -54,7 +54,7 @@ def main(*args, **kwargs):
                 method = args[i + 1].upper()
                 i += 2
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "Error: -X requires a method"}, receiver = shell_id)
                 ])
                 return
@@ -68,14 +68,14 @@ def main(*args, **kwargs):
                     key, val = hdr.split(":", 1)
                     val = val.lstrip()
                 else:
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": "Error: Invalid header format. Use 'Key: Value'"}, receiver = shell_id)
                     ])
                     return
                 headers[key] = val
                 i += 2
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "Error: -H requires a header"}, receiver = shell_id)
                 ])
                 return
@@ -85,7 +85,7 @@ def main(*args, **kwargs):
                 data = args[i + 1]
                 i += 2
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "Error: -d requires data"}, receiver = shell_id)
                 ])
                 return
@@ -100,7 +100,7 @@ def main(*args, **kwargs):
             
         elif not arg.startswith("-"):
             if url is not None:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "Error: Only one URL allowed"}, receiver = shell_id)
                 ])
                 return
@@ -108,13 +108,13 @@ def main(*args, **kwargs):
             i += 1
             
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": f"Error: Unknown option: {arg}"}, receiver = shell_id)
             ])
             return
 
     if not url:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": "Error: URL required\nUsage: atcurl [OPTIONS] <URL>"}, receiver = shell_id)
         ])
         return
@@ -122,7 +122,7 @@ def main(*args, **kwargs):
     # Validate method
     valid_methods = {"GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"}
     if method not in valid_methods:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": f"Error: Invalid method '{method}'. Use: {', '.join(valid_methods)}"}, receiver = shell_id)
         ])
         return
@@ -139,15 +139,15 @@ def main(*args, **kwargs):
 
     # Verbose output
     if verbose:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output_part": f"Method: {method}\nURL: {url}\nHeaders:"}, receiver = shell_id)
         ])
         for k, v in headers.items():
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output_part": f"  {k}: {v}"}, receiver = shell_id)
             ])
         if data is not None:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output_part": f"Body: {data}"}, receiver = shell_id)
             ])
 
@@ -166,7 +166,7 @@ def main(*args, **kwargs):
         elif method == "PATCH":
             resp = urequests.patch(url, data=data, headers=headers)
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": f"Error: Unsupported method {method}"}, receiver = shell_id)
             ])
             return
@@ -186,7 +186,7 @@ def main(*args, **kwargs):
         output += resp.text
         
         #print(output, end="")
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": output}, receiver = shell_id)
         ])
 
@@ -195,6 +195,6 @@ def main(*args, **kwargs):
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

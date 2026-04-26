@@ -50,12 +50,12 @@ def main(*args, **kwargs):
                 result = f"Read error: {e}"
             if exists(target_path) and isfile(target_path):
                 os.remove(target_path)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": result}, receiver = shell_id)
         ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

@@ -23,18 +23,18 @@ def main(*args, **kwargs):
                 z = ZipFile(path)
                 for zipinfo in z.namelist():
                     target_path = z._extract_member(zipinfo, dir_path, None)
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output_part": target_path}, receiver = shell_id)
                     ])
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": ""}, receiver = shell_id)
                 ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": result}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
@@ -42,6 +42,6 @@ def main(*args, **kwargs):
         sys.print_exception(e, buf)
         reason = buf.getvalue()
         print(reason)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": sys.print_exception(e)}, receiver = shell_id)
         ])

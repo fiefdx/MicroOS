@@ -16,7 +16,7 @@ def main(*args, **kwargs):
         if len(kwargs["args"]) > 0:
             ssid = kwargs["args"][0]
             WIFI.active(True)
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load({"output_part": "password:"}, receiver = shell_id)
             ])
             password = ""
@@ -27,36 +27,36 @@ def main(*args, **kwargs):
                 else:
                     password += msg.content["msg"]
                 msg.release()
-                yield Condition.get().load(sleep = 0, wait_msg = True)
+                yield task.condition.load(sleep = 0, wait_msg = True)
                 msg = task.get_message()
             msg.release()
             #print("password:", password)
             WIFI.connect(ssid, password)
             s = time.time()
             while not WIFI.is_connect():
-                yield Condition.get().load(sleep = 1000, send_msgs = [
+                yield task.condition.load(sleep = 1000, send_msgs = [
                     Message.get().load({"output_part": "connecting ..."}, receiver = shell_id)
                 ])
                 ss = time.time()
                 if ss - s >= 10:
-                    yield Condition.get().load(sleep = 1000, send_msgs = [
+                    yield task.condition.load(sleep = 1000, send_msgs = [
                         Message.get().load({"output_part": "connecting too long, check ifconfig later!"}, receiver = shell_id)
                     ])
                     break
             if WIFI.is_connect():
-                yield Condition.get().load(sleep = 1000, send_msgs = [
+                yield task.condition.load(sleep = 1000, send_msgs = [
                     Message.get().load({"output": "\n".join(WIFI.ifconfig())}, receiver = shell_id)
                 ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": "connect to %s failed" % ssid}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": sys.print_exception(e)}, receiver = shell_id)
         ])
 

@@ -577,20 +577,20 @@ def main(*args, **kwargs):
             height = 20
             size = 15
             frame_interval = 30
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"clear": True}, receiver = display_id)
             ])
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"enabled": False}, receiver = cursor_id)
             ])
             g = Game(width, height)
             g.place_brick()
             g.update("")
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"clear": True}, receiver = display_id)
             ])
 
-            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                 Message.get().load({
                     "render": (("rects", "rects"), ), # , ("background", "tiles"), ("area_clear", "tiles"), ("text_clear", "tiles")),
                     "rects": [
@@ -599,7 +599,7 @@ def main(*args, **kwargs):
                         [offset_x - 1, offset_y - 1, 152, 302, C.yellow],
                 ]}, receiver = display_id)
             ])
-            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                 Message.get().load({
                     "render": (("bricks", "bricks"),),
                     "bricks": {
@@ -612,7 +612,7 @@ def main(*args, **kwargs):
                     }
                 }, receiver = display_id)
             ])
-            yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                 Message.get().load({
                     "render": (("bricks", "bricks"), ("texts", "texts")),
                     "bricks": {
@@ -695,7 +695,7 @@ def main(*args, **kwargs):
                         "C": C.red,
                     })
                 if brick.type != g.next_brick.type or brick.direction != g.next_brick.direction:
-                    yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                    yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                         Message.get().load({
                             "render": (("bricks", "bricks"),),
                             "bricks": {
@@ -709,7 +709,7 @@ def main(*args, **kwargs):
                         }, receiver = display_id)
                     ])
                     brick = g.next_brick
-                yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+                yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
                     Message.get().load({
                         "render": (("bricks", "bricks"), ("texts", "texts")),
                         "bricks": {
@@ -733,13 +733,13 @@ def main(*args, **kwargs):
                 else:
                     c = None
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "invalid parameters"}, receiver = shell_id)
             ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -747,14 +747,14 @@ def main(*args, **kwargs):
         shell.current_shell = None
 #         shell.scheduler.keyboard.game_mode = False
         shell.loading = True
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -765,6 +765,6 @@ def main(*args, **kwargs):
         reason = sys.print_exception(e)
         if reason is None:
             reason = "render failed"
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(reason)}, receiver = shell_id)
         ])

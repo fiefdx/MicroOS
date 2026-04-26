@@ -16,28 +16,28 @@ def main(*args, **kwargs):
         if len(args) > 0:
             if args[0] == "-s":
                 if Time.sync():
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": Time.now()}, receiver = shell_id)
                     ])
                 else:
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": "sync failed"}, receiver = shell_id)
                     ])
             elif args[0] == "-h":
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": Time.now_hardware()}, receiver = shell_id)
                 ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": Time.now()}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": Time.now()}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

@@ -23,22 +23,22 @@ def main(*args, **kwargs):
                 success = f.open_source_file()
                 if success is True:
                     name = f.decrypt_info(key = password)
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": name}, receiver = shell_id)
                     ])
                 else:
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": success}, receiver = shell_id)
                     ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": ""}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(sys.print_exception(e))}, receiver = shell_id)
         ])

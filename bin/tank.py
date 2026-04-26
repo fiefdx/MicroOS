@@ -387,13 +387,13 @@ def main(*args, **kwargs):
         height = 38
         size = 8
         frame_interval = 20
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": False}, receiver = cursor_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({
                 "render": (("borders", "rects"), ("status", "texts")),
                 "borders": [[3, 14, 314, 306, 1]],
@@ -407,7 +407,7 @@ def main(*args, **kwargs):
         w.tanks.append(Tank(5, 1, 3, 4))
         w.place_player(Tank(1, 3, 2, 100), 16, 19)
         w.update("")
-        yield Condition.get().load(sleep = frame_interval, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = frame_interval, wait_msg = False, send_msgs = [
             Message.get().load({
                 "render": (("bricks", "bricks"),),
                 "bricks": {"offset_x": 4, "offset_y": 15, "data": w.get_diff_frame(), "width": width, "height": height, "size": size}}, receiver = display_id)
@@ -422,7 +422,7 @@ def main(*args, **kwargs):
         while b"ES" not in keys:
             if b"r" in keys:
                 w.reset()
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({
                         "clear": True,
                         "render": (("borders", "rects"), ("status", "texts")),
@@ -441,7 +441,7 @@ def main(*args, **kwargs):
             sleep_time = 0
             if frame_interval > already_used_time:
                 sleep_time = frame_interval - already_used_time
-            yield Condition.get().load(sleep = sleep_time, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = sleep_time, wait_msg = False, send_msgs = [
                 Message.get().load({
                     "render": (("bricks", "bricks"), ("status", "texts")),
                     "bricks": {"offset_x": 4, "offset_y": 15, "data": w.get_diff_frame(), "width": width, "height": height, "size": size},
@@ -453,10 +453,10 @@ def main(*args, **kwargs):
             Resource.keyboard.readinto(buf)
             keys = bytes(buf)
 #             keys = k.scan_keys()
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -464,14 +464,14 @@ def main(*args, **kwargs):
         shell.current_shell = None
         Resource.keyboard.disable = False
         shell.loading = True
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
     except Exception as e:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"clear": True}, receiver = display_id)
         ])
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"enabled": True}, receiver = cursor_id)
         ])
         shell.disable_output = False
@@ -484,6 +484,6 @@ def main(*args, **kwargs):
         reason = buf.getvalue()
         if reason is None:
             reason = "edit failed"
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(reason)}, receiver = shell_id)
         ])

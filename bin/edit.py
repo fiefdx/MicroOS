@@ -910,7 +910,7 @@ def main(*args, **kwargs):
                 ram = int(kwargs["args"][1]) == 1
             s = EditShell(file_path, ram = ram, edit_id = shell_obj_id)
             shell.current_shell = s
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load({"frame": s.get_using_ram_frame(), "cursor": s.get_cursor_position(1)}, receiver = display_id)
             ])
             msg = task.get_message()
@@ -921,10 +921,10 @@ def main(*args, **kwargs):
             else:
                 s.set_ram(False)
             for p in s.load_and_calc_total_lines():
-                yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                     Message.get().load({"frame": s.get_loading_frame(p), "cursor": s.get_cursor_position(1)}, receiver = display_id)
                 ])
-            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                 Message.get().load(s.get_frame(), receiver = display_id)
             ])
             msg = task.get_message()
@@ -936,20 +936,20 @@ def main(*args, **kwargs):
                     s.close()
                     gc.collect()
                     break
-                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load(s.get_frame(), receiver = display_id)
                 ])
                 msg = task.get_message()
                 c = msg.content["msg"]
                 msg.release()
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "invalid parameters"}, receiver = shell_id)
             ])
         shell.disable_output = False
         shell.current_shell = None
         shell.loading = True
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": ""}, receiver = shell_id)
         ])
     except Exception as e:
@@ -961,6 +961,6 @@ def main(*args, **kwargs):
         reason = buf.getvalue()
         if reason is None:
             reason = "edit failed"
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(reason)}, receiver = shell_id)
         ])

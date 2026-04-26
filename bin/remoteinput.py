@@ -9,7 +9,7 @@ coroutine = True
 
 
 def remote_input(task, name, scheduler = None, interval = 50, display_id = None):
-    condition_get = Condition.get
+    task.condition.load
     msg_get = Message.get
     task_get_msg = task.get_message
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,7 +29,7 @@ def remote_input(task, name, scheduler = None, interval = 50, display_id = None)
         yield condition_get().load(sleep = 0, send_msgs = [msg_get().load({"refresh": True}, receiver = scheduler.current_shell_id)])
 
     while not stop:
-        yield Condition.get().load(sleep = interval)
+        yield task.condition.load(sleep = interval)
         msg = task.get_message()
         if msg:
             if msg.content["msg"] == "stop":
@@ -88,13 +88,13 @@ def main(*args, **kwargs):
     try:
         if len(args) > 0:
             if args[0] == "start":
-                task_id = scheduler.add_task(Task.get().load(remote_input, "remote_keyboard", condition = Condition.get(), kwargs = {"scheduler": scheduler, "interval": 50, "display_id": display_id}))
+                task_id = scheduler.add_task(Task.get().load(remote_input, "remote_keyboard", kwargs = {"scheduler": scheduler, "interval": 50, "display_id": display_id}))
                 result = f"remote keyboard({task_id}): 0.0.0.0:8888"
             elif args[0] == "stop":
                 result = "task not found"
                 for i, t in enumerate(scheduler.tasks):
                     if t.name == "remote_keyboard":
-                        yield Condition.get().load(sleep = 0, send_msgs = [
+                        yield task.condition.load(sleep = 0, send_msgs = [
                             Message.get().load({"msg": "stop"}, receiver = t.id)
                         ])
                         result = f"send stop signal to task({t.id})"
@@ -107,16 +107,16 @@ def main(*args, **kwargs):
                         break
             else:
                 result = "Usage: remoteinput start|stop|status"
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "Usage: remoteinput start|stop|status"}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

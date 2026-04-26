@@ -18,7 +18,7 @@ def main(*args, **kwargs):
     args = kwargs["args"]
     
     if len(args) == 0:
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": "Get a file from the net\nUsage:wget <url>"}, receiver = shell_id)
         ])
         return
@@ -39,7 +39,7 @@ def main(*args, **kwargs):
         keys = bytes(buf)
         while b'\xb1' not in keys: # ES
             if n % 2048 == 0:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output_part": "download: %.2fKB" % (total / 1024)}, receiver = shell_id)
                 ])
             read = r.read(512)
@@ -53,18 +53,18 @@ def main(*args, **kwargs):
             keys = bytes(buf)
         fp.close()
         if b'\xb1' in keys: # ES
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "download partially: %.2fKB" % (total / 1024)}, receiver = shell_id)
             ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "download: %.2fKB" % (total / 1024)}, receiver = shell_id)
             ])
         Resource.keyboard.disable = False
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])
         Resource.keyboard.disable = False

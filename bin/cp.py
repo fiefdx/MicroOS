@@ -20,7 +20,7 @@ def main(*args, **kwargs):
             s_path = abs_path(args[0])
             t_path = abs_path(args[1])
             for output in copy(s_path, t_path):
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output_part": output}, receiver = shell_id)
                 ])
                 msg = task.get_message()
@@ -30,16 +30,16 @@ def main(*args, **kwargs):
                     if c == "ES":
                         canceled = True
                         break
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": "canceled" if canceled else ""}, receiver = shell_id)
             ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

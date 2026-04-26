@@ -299,7 +299,7 @@ def main(*args, **kwargs):
             stream = True if int(kwargs["args"][2]) == 1 else False
         s = ChatShell(display_size = (39, 28), host = host, port = port, model = model, stream = stream, chat_id = shell_obj_id)
         shell.current_shell = s
-        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
             Message.get().load({"frame": s.get_using_ram_frame(), "cursor": s.get_cursor_position(1)}, receiver = display_id)
         ])
         msg = task.get_message()
@@ -311,7 +311,7 @@ def main(*args, **kwargs):
             s.set_ram(False)
         s.write_line("             Welcome to Chat")
         s.write_char("\n")
-        yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
             Message.get().load(s.get_display_frame(), receiver = shell_id)
         ])
         msg = task.get_message()
@@ -321,7 +321,7 @@ def main(*args, **kwargs):
             #print("char:", c)
             s.input_char(c)
             if not s.exit:
-                yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                     Message.get().load(s.get_display_frame(1 if c != "" else None), receiver = shell_id)
                 ])
                 msg = task.get_message()
@@ -335,13 +335,13 @@ def main(*args, **kwargs):
         s.history = None
         s.frame_history = None
         del s
-        yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+        yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
             Message.get().load({"output": "quit from chat"}, receiver = shell_id)
         ])
     except Exception as e:
         shell.disable_output = False
         shell.current_shell = None
         shell.loading = True
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": str(e)}, receiver = shell_id)
         ])

@@ -24,14 +24,14 @@ def main(*args, **kwargs):
                 for i in t:
                     if i.type == utarfile.DIRTYPE:
                         target_path = path_join(dir_path, i.name)
-                        yield Condition.get().load(sleep = 0, send_msgs = [
+                        yield task.condition.load(sleep = 0, send_msgs = [
                             Message.get().load({"output_part": target_path}, receiver = shell_id)
                         ])
                         mkdirs(target_path)
                     else:
                         f = t.extractfile(i)
                         target_path = path_join(dir_path, i.name)
-                        yield Condition.get().load(sleep = 0, send_msgs = [
+                        yield task.condition.load(sleep = 0, send_msgs = [
                             Message.get().load({"output_part": target_path}, receiver = shell_id)
                         ])
                         w = open(target_path, "wb")
@@ -40,20 +40,20 @@ def main(*args, **kwargs):
                             w.write(buf)
                             buf = f.read(512)
                         w.close()
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": ""}, receiver = shell_id)
                 ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": result}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])

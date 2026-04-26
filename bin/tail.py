@@ -44,7 +44,7 @@ def main(*args, **kwargs):
                         line = line.replace("\n", "")
                         if n == page_size:
                             n = 0
-                            yield Condition.get().load(sleep = 0, wait_msg = True, send_msgs = [
+                            yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
                                 Message.get().load({"output_part": line}, receiver = shell_id)
                             ])
                             msg = task.get_message()
@@ -52,31 +52,31 @@ def main(*args, **kwargs):
                                 if msg.content["msg"] == "\n":
                                     break
                                 msg.release()
-                                yield Condition.get().load(sleep = 0, wait_msg = True)
+                                yield task.condition.load(sleep = 0, wait_msg = True)
                                 msg = task.get_message()
                             if msg.content["msg"] == "ES":
                                 msg.release()
                                 break
                             msg.release()
                         else:
-                            yield Condition.get().load(sleep = 0, send_msgs = [
+                            yield task.condition.load(sleep = 0, send_msgs = [
                                 Message.get().load({"output_part": line}, receiver = shell_id)
                             ])
                         line = fp.readline()
-                    yield Condition.get().load(sleep = 0, send_msgs = [
+                    yield task.condition.load(sleep = 0, send_msgs = [
                         Message.get().load({"output": ""}, receiver = shell_id)
                     ])
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"output": result}, receiver = shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, send_msgs = [
+            yield task.condition.load(sleep = 0, send_msgs = [
                 Message.get().load({"output": result}, receiver = shell_id)
             ])
     except Exception as e:
         buf = StringIO()
         sys.print_exception(e, buf)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"output": buf.getvalue()}, receiver = shell_id)
         ])
