@@ -11,9 +11,8 @@ def main(*args, **kwargs):
     for i, t in enumerate(scheduler.tasks):
         result += "%03d: %s\n"  % (t.id, t.name)
     result += "-" * 40 + "\n"
-    result += "Message:%s/%s Condition:%s/%s Task:%s/%s" % (
+    result += "Message:%s/%s Task:%s/%s" % (
         Message.remain(), len(Message.pool),
-        Task.remain(), len(Task.pool),
         Task.remain(), len(Task.pool)
     )
     return result
