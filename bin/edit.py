@@ -219,18 +219,25 @@ class EditShell(object):
 
     def _on_cursor_up(self):
         self.cursor_move_up()
+
     def _on_cursor_down(self):
         self.cursor_move_down()
+
     def _on_page_up(self):
         self.page_up()
+
     def _on_page_down(self):
         self.page_down()
+
     def _on_cursor_left(self):
         self.cursor_move_left()
+
     def _on_cursor_right(self):
         self.cursor_move_right()
+
     def _on_page_left(self):
         self.page_left()
+
     def _on_page_right(self):
         self.page_right()
 
@@ -305,13 +312,16 @@ class EditShell(object):
         self.previous_mode = self.mode
         self.mode = "edit"
         self.copy_into_clipboard()
+
     def _on_cut(self):
         self.previous_mode = self.mode
         self.mode = "edit"
         self.copy_into_clipboard(cut = True)
+
     def _on_comment_select(self):
         self.comment_select_lines()
         self._clear_highlight()
+
     def _on_escape_select(self):
         self.previous_mode = self.mode
         self.mode = "edit"
@@ -504,6 +514,7 @@ class EditShell(object):
             self.cursor_row = insert_row + n - 1
             if self.cursor_row - self.display_offset_row >= self.cache_size:
                 self.display_offset_row = self.cursor_row - self.cache_size + 1
+        self.status = "changed"
 
     def copy_into_clipboard(self, cut = False):
         display_start = self.display_offset_row
