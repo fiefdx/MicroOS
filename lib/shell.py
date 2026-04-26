@@ -261,7 +261,7 @@ class Shell(object):
     def input_char(self, c):
         try:
             if self.session_task_id is not None and self.scheduler.exists_task(self.session_task_id):
-                self.scheduler.add_task(Task.get().load(self.send_session_message, c, condition = Condition.get(), kwargs = {})) # execute cmd
+                self.scheduler.add_task(Task.get().load(self.send_session_message, c, kwargs = {})) # execute cmd
             else:
                 if c == "\n":
                     # Convert line chars to string for command processing
@@ -273,15 +273,15 @@ class Shell(object):
                             self.history.append(line_str)
                             self.write_history(line_str)
                             cmd = " ".join(cmd.split(" ")[1:]).strip()
-                            self.scheduler.add_task(Task.get().load(self.run_script_coroutine, cmd, condition = Condition.get(), kwargs = {})) # execute cmd
+                            self.scheduler.add_task(Task.get().load(self.run_script_coroutine, cmd, kwargs = {})) # execute cmd
                         else:
                             if self.session_task_id is not None and self.scheduler.exists_task(self.session_task_id):
-                                self.scheduler.add_task(Task.get().load(self.send_session_message, line_str.strip(), condition = Condition.get(), kwargs = {})) # execute cmd
+                                self.scheduler.add_task(Task.get().load(self.send_session_message, line_str.strip(), kwargs = {})) # execute cmd
                             else:
                                 self.history.append(line_str)
                                 self.write_history(line_str)
                                 command = cmd.split(" ")[0].strip()
-                                self.scheduler.add_task(Task.get().load(self.run_coroutine, cmd, condition = Condition.get(), kwargs = {})) # execute cmd
+                                self.scheduler.add_task(Task.get().load(self.run_coroutine, cmd, kwargs = {})) # execute cmd
                         # Clear input buffer after command execution
                         self._line_chars = []
                     else:
@@ -382,13 +382,13 @@ class Shell(object):
         self.cache_to_frame_history()
             
     def run(self, task, cmd):
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"cmd": cmd}, receiver = self.storage_id)
         ])
         
     def send_session_message(self, task, msg):
         #print("send_session_message:", msg, self.session_task_id)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"msg": msg}, receiver = self.session_task_id)
         ])
         
@@ -411,20 +411,20 @@ class Shell(object):
                 #bin.__dict__[]
                 #self.session_task_id = self.scheduler.add_task(Task(bin.__dict__[module].main, cmd, kwargs = {"args": args[1:], "shell_id": self.scheduler.shell_id, "shell": self}, need_to_clean = [bin.__dict__[module]])) # execute cmd
                 self.session_task_id = self.scheduler.add_task(
-                    Task.get().load(sys.modules[module].main, cmd, condition = Condition.get(), kwargs = {"args": args[1:],
+                    Task.get().load(sys.modules[module].main, cmd, kwargs = {"args": args[1:],
                                                                                                           "shell_id": self.scheduler.current_shell_id,
                                                                                                           "shell_obj_id": self.shell_id,
                                                                                                           "display_id": self.display_id,
                                                                                                           "shell": self}, need_to_clean = [sys.modules[module]])
                 ) # execute cmd
             else:
-                yield Condition.get().load(sleep = 0, send_msgs = [
+                yield task.condition.load(sleep = 0, send_msgs = [
                     Message.get().load({"cmd": cmd}, receiver = self.storage_id)
                 ])
         except Exception as e:
             buf = StringIO()
             sys.print_exception(e, buf)
-            yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                 Message.get().load({"output": "error: %s" % buf.getvalue()}, receiver = self.scheduler.current_shell_id)
             ])
 
@@ -443,7 +443,7 @@ class Shell(object):
                     # exec(import_str)
                 if sys.modules[module].coroutine:
                     self.session_task_id = self.scheduler.add_task(
-                        Task.get().load(sys.modules[module].main, cmd, condition = Condition.get(), kwargs = {"args": args[1:],
+                        Task.get().load(sys.modules[module].main, cmd, kwargs = {"args": args[1:],
                                                                                                               "shell_id": self.scheduler.current_shell_id,
                                                                                                               "shell_obj_id": self.shell_id,
                                                                                                               "display_id": self.display_id,
@@ -451,17 +451,17 @@ class Shell(object):
                     ) # execute cmd
                 else:
                     sys.path.pop(0)
-                    yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+                    yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                         Message.get().load({"output": "it's not a coroutine script!"}, receiver = self.scheduler.current_shell_id)
                     ])
             except Exception as e:
                 buf = StringIO()
                 sys.print_exception(e, buf)
-                yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+                yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                     Message.get().load({"output": "error: %s" % buf.getvalue()}, receiver = self.scheduler.current_shell_id)
                 ])
         else:
-            yield Condition.get().load(sleep = 0, wait_msg = False, send_msgs = [
+            yield task.condition.load(sleep = 0, wait_msg = False, send_msgs = [
                 Message.get().load({"output": "script path not exists!"}, receiver = self.scheduler.current_shell_id)
             ])
     

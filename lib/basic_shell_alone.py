@@ -289,14 +289,13 @@ class BasicShell(object):
                                     self.program.delete_statement(int(tokenlist[0].lexeme))
                                     self.print("")
 
-                                # Execute the program
+                               # Execute the program
                                 elif tokenlist[0].category == Token.RUN:
                                     self.run_program_id = self.scheduler.add_task(
                                         Task.get().load(self.program.execute,
-                                             "basic-execute",
-                                             condition = Condition.get(),
-                                             kwargs = {"execute_print": self.execute_print, "shell": self}
-                                        )
+                                              "basic-execute",
+                                              kwargs = {"execute_print": self.execute_print, "shell": self}
+                                         )
                                     )
                                     self.print("")
 
@@ -404,7 +403,7 @@ class BasicShell(object):
                                                         ram_used)
         message += "Message[%s/%s] Condition[%s/%s] Task[%s/%s]" % (
             Message.remain(), len(Message.pool),
-            Condition.remain(), len(Condition.pool),
+            Task.remain(), len(Task.pool),
             Task.remain(), len(Task.pool)
         )
         return message
@@ -520,19 +519,19 @@ class BasicShell(object):
         pass
 
     def kill_task(self, task, name):
-        yield Condition.get().load(sleep = 0, send_msgs = [Message.get().load({"msg": "Ctrl-C"}, receiver = self.run_program_id)])
+        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": "Ctrl-C"}, receiver = self.run_program_id)])
         self.run_program_id = None
         
     def kill_program(self):
         if self.run_program_id != None:
             #self.run_program_id = None
-            self.scheduler.add_task(Task.get().load(self.kill_task, "kill", condition = Condition.get(), kwargs = {}))
+            self.scheduler.add_task(Task.get().load(self.kill_task, "kill", kwargs = {}))
             
     def send_input(self, task, name, msg = ""):
-        yield Condition.get().load(sleep = 0, send_msgs = [Message.get().load({"msg": msg}, receiver = self.run_program_id)])
+        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": msg}, receiver = self.run_program_id)])
     
     def send_input_hook(self, line):
-        self.scheduler.add_task(Task.get().load(self.send_input, "send_input", condition = Condition.get(), kwargs = {"msg": line[self.input_start:]}))
+        self.scheduler.add_task(Task.get().load(self.send_input, "send_input", kwargs = {"msg": line[self.input_start:]}))
         self.wait_for_input = False
         self.input_start = None
         
@@ -645,13 +644,13 @@ class BasicShell(object):
         self.cache_to_frame_history()
             
     def run(self, task, cmd):
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"cmd": cmd}, receiver = self.storage_id)
         ])
         
     def send_session_message(self, task, msg):
         #print("send_session_message:", msg, self.session_task_id)
-        yield Condition.get().load(sleep = 0, send_msgs = [
+        yield task.condition.load(sleep = 0, send_msgs = [
             Message.get().load({"msg": msg}, receiver = self.session_task_id)
         ])
         
@@ -670,7 +669,7 @@ class BasicShell(object):
         #bin.__dict__[]
         #self.session_task_id = self.scheduler.add_task(Task(bin.__dict__[module].main, cmd, kwargs = {"args": args[1:], "shell_id": self.scheduler.shell_id, "shell": self}, need_to_clean = [bin.__dict__[module]])) # execute cmd
         self.session_task_id = self.scheduler.add_task(
-            Task.get().load(sys.modules[module].main, cmd, condition = Condition.get(), kwargs = {"args": args[1:],
+            Task.get().load(sys.modules[module].main, cmd, kwargs = {"args": args[1:],
                                                                                        "shell_id": self.scheduler.shell_id,
                                                                                        "shell": self}, need_to_clean = [sys.modules[module]])
         ) # execute cmd

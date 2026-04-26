@@ -360,18 +360,18 @@ class Program:
                 if frame != frame_previous:
                     frame_previous = frame
                     s = ticks_ms()
-                    yield Condition.get().load(sleep = 0)
+                    yield task.condition.load(sleep = 0)
                 elif ticks_diff(ticks_ms(), s) >= 250:
                     s = ticks_ms()
                     gc_n += 1
                     if gc_n >= 2:
                         gc_n = 0
                         gc.collect()
-                    yield Condition.get().load(sleep = 0)
+                    yield task.condition.load(sleep = 0)
                 flowsignal = self.__execute(self.get_next_line_number(), execute_print)
                 if flowsignal == "_wait":
                     shell.wait_for_input = True
-                    yield Condition.get().load(sleep = 0, wait_msg = True)
+                    yield task.condition.load(sleep = 0, wait_msg = True)
                     msg = task.get_message()
                     if msg.content["msg"] == "Ctrl-C":
                         msg.release()
@@ -479,7 +479,7 @@ class Program:
                                     stop = True
                                     break
                                 msg.release()
-                            yield Condition.get().load(sleep = 0)
+                            yield task.condition.load(sleep = 0)
                             
                             next_line_number = line_numbers[index]
                             temp_tokenlist = self.__program[next_line_number]
