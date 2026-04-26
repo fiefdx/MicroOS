@@ -4,7 +4,6 @@ import neopixel
 
 cpu_freq = const(240000000)
 messages = const(50)
-conditions = const(50)
 tasks = const(50)
 
 display_cs = Pin(13, Pin.OUT, value = 1)
