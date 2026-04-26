@@ -257,10 +257,12 @@ class EditShell(object):
 
     def _on_paste(self):
         self.paste()
+        self._clear_highlight()
         self.frame_force_update = True
 
     def _on_chat(self):
         self.generate_with_chat()
+        self._clear_highlight()
         self.frame_force_update = True
 
     def _on_goto_start(self):
@@ -272,6 +274,7 @@ class EditShell(object):
         if self.comment_one_line():
             self.status = "changed"
             self.exit_count = 0
+            self._clear_highlight()
             self.frame_force_update = True
 
     def _on_escape(self):
@@ -308,6 +311,7 @@ class EditShell(object):
         self.copy_into_clipboard(cut = True)
     def _on_comment_select(self):
         self.comment_select_lines()
+        self._clear_highlight()
     def _on_escape_select(self):
         self.previous_mode = self.mode
         self.mode = "edit"
@@ -517,6 +521,7 @@ class EditShell(object):
             if select_start_col != select_end_col:
                 ClipBoard.set(self.cache[select_start_row][select_start_col: select_end_col + 1])
                 if cut:
+                    self.status = "changed"
                     self.cache[select_start_row] = self.cache[select_start_row][:select_start_col] + self.cache[select_start_row][select_end_col + 1:]
         else:
             fp = ClipBoard.get_file()
@@ -526,6 +531,7 @@ class EditShell(object):
             fp.write(self.cache[select_end_row][:select_end_col])
             fp.close()
             if cut:
+                self.status = "changed"
                 self.edit_redo_cache.clear()
                 if select_start_col == 0:
                     start_delete = select_start_row
@@ -539,6 +545,7 @@ class EditShell(object):
                     self.cache.pop(start_delete)
                 self.edit_history.append(["edit", start_delete, self.cache[start_delete], (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)])
                 self.cache[start_delete] = self.cache[start_delete][select_end_col:]
+                self._clear_highlight()
 
     def get_select_lines(self):
         lines = []
