@@ -264,6 +264,7 @@ class EditShell(object):
 
     def _on_paste(self):
         self.paste()
+        self.status = "changed"
         self._clear_highlight()
         self.frame_force_update = True
 
@@ -317,10 +318,12 @@ class EditShell(object):
         self.previous_mode = self.mode
         self.mode = "edit"
         self.copy_into_clipboard(cut = True)
+        self.frame_force_update = True
 
     def _on_comment_select(self):
         self.comment_select_lines()
         self._clear_highlight()
+        self.status = "changed"
 
     def _on_escape_select(self):
         self.previous_mode = self.mode
@@ -514,7 +517,6 @@ class EditShell(object):
             self.cursor_row = insert_row + n - 1
             if self.cursor_row - self.display_offset_row >= self.cache_size:
                 self.display_offset_row = self.cursor_row - self.cache_size + 1
-        self.status = "changed"
 
     def copy_into_clipboard(self, cut = False):
         display_start = self.display_offset_row
@@ -534,6 +536,10 @@ class EditShell(object):
                 if cut:
                     self.status = "changed"
                     self.cache[select_start_row] = self.cache[select_start_row][:select_start_col] + self.cache[select_start_row][select_end_col + 1:]
+                    self.cursor_row = select_start_row
+                    self.cursor_col = select_start_col - self.offset_col
+                    if self.cursor_col < 0:
+                        self.cursor_col = 0
         else:
             fp = ClipBoard.get_file()
             fp.write(self.cache[select_start_row][select_start_col:] + "\n")
@@ -557,6 +563,10 @@ class EditShell(object):
                 self.edit_history.append(["edit", start_delete, self.cache[start_delete], (self.cursor_col, self.cursor_row, self.display_offset_col, self.display_offset_row, self.offset_col)])
                 self.cache[start_delete] = self.cache[start_delete][select_end_col:]
                 self._clear_highlight()
+                self.cursor_row = start_delete
+                self.cursor_col = select_start_col - self.offset_col
+                if self.cursor_col < 0:
+                    self.cursor_col = 0
 
     def get_select_lines(self):
         lines = []
