@@ -34,6 +34,7 @@ class OpenAIChat(object):
 
     def chat(self, message):
         url = "http://%s:%s/v1/chat/completions" % (self.host, self.port)
+        message = message + " please, reply with only text, without emoji"
         self.context.append({"role": "user", "content": message})
         if len(self.context) > self.context_length:
             self.context.pop(0)

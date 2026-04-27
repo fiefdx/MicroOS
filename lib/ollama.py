@@ -145,6 +145,7 @@ class ChatRAM(object):
 
     def chat(self, message):
         url = "http://%s:%s/api/chat" % (self.host, self.port)
+        message = message + " please, reply with only text, without emoji"
         self.context.append({"role": "user", "content": message})
         if len(self.context) > self.context_length:
             self.context.pop(0)
@@ -220,6 +221,7 @@ class Chat(object):
         
     def chat(self, message):
         url = "http://%s:%s/api/chat" % (self.host, self.port)
+        message = message + " please, reply with only text, without emoji"
         self.data.append_message(b'{"role": "user", "content": "%s"}' % message)
         r = requests.post(url, data = self.data, headers = self.headers, stream = self.stream)
         if r.status_code == 200:
