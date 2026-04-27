@@ -8,6 +8,8 @@ from lib.scheduler import Condition, Message
 coroutine = True
 
 def main(*args, **kwargs):
+    task = args[0]
+    name = args[1]
     doc = """
     curl - Basic curl-like command for MicroPython
     Usage: atcurl [OPTIONS] <URL>
@@ -21,8 +23,6 @@ def main(*args, **kwargs):
       --h         Show this help
     """
     
-    task = args[0]
-    name = args[1]
     result = "invalid parameters"
     shell_id = kwargs["shell_id"]
     

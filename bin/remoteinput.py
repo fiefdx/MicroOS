@@ -79,6 +79,8 @@ def remote_input(task, name, scheduler = None, interval = 50, display_id = None)
 
 
 def main(*args, **kwargs):
+    task = args[0]
+    name = args[1]
     result = "invalid parameters"
     args = kwargs["args"]
     shell_id = kwargs["shell_id"]

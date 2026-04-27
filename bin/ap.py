@@ -122,9 +122,11 @@ def main(*args, **kwargs):
     Scheduler entry point.
 
     * args[0] - the Task instance (exposes get_message())
+    * args[1] - command name
     * kwargs   - shell_id (where to send output) and args (raw CLI args)
     """
     task     = args[0]                # the current Task object
+    name     = args[1]                # command name
     shell_id = kwargs.get("shell_id")
     cli_args = kwargs.get("args", [])
 
