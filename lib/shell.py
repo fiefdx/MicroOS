@@ -412,10 +412,10 @@ class Shell(object):
                 #self.session_task_id = self.scheduler.add_task(Task(bin.__dict__[module].main, cmd, kwargs = {"args": args[1:], "shell_id": self.scheduler.shell_id, "shell": self}, need_to_clean = [bin.__dict__[module]])) # execute cmd
                 self.session_task_id = self.scheduler.add_task(
                     Task.get().load(sys.modules[module].main, cmd, kwargs = {"args": args[1:],
-                                                                                                          "shell_id": self.scheduler.current_shell_id,
-                                                                                                          "shell_obj_id": self.shell_id,
-                                                                                                          "display_id": self.display_id,
-                                                                                                          "shell": self}, need_to_clean = [sys.modules[module]])
+                                                                             "shell_id": self.scheduler.current_shell_id,
+                                                                             "shell_obj_id": self.shell_id,
+                                                                             "display_id": self.display_id,
+                                                                             "shell": self}, need_to_clean = [sys.modules[module]])
                 ) # execute cmd
             else:
                 yield task.condition.load(sleep = 0, send_msgs = [
@@ -444,10 +444,10 @@ class Shell(object):
                 if sys.modules[module].coroutine:
                     self.session_task_id = self.scheduler.add_task(
                         Task.get().load(sys.modules[module].main, cmd, kwargs = {"args": args[1:],
-                                                                                                              "shell_id": self.scheduler.current_shell_id,
-                                                                                                              "shell_obj_id": self.shell_id,
-                                                                                                              "display_id": self.display_id,
-                                                                                                              "shell": self}, need_to_clean = [sys.modules[module]], reset_sys_path = True)
+                                                                                 "shell_id": self.scheduler.current_shell_id,
+                                                                                 "shell_obj_id": self.shell_id,
+                                                                                 "display_id": self.display_id,
+                                                                                 "shell": self}, need_to_clean = [sys.modules[module]], reset_sys_path = True)
                     ) # execute cmd
                 else:
                     sys.path.pop(0)
