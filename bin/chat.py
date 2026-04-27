@@ -7,7 +7,8 @@ from io import StringIO
 from lib.listfile import ListFile
 from lib.shell import Shell
 from lib.scheduler import Condition, Message
-from lib.ollama import Chat
+from lib.ollama import Chat as OllamaChat
+from lib.openai import OpenAIChat
 from lib.common import exists, path_join, isfile, isdir, mkdirs, path_split, Resource, ram_size
 from lib.display import Colors as C
 
@@ -15,7 +16,7 @@ coroutine = True
 
 
 class ChatShell(Shell):
-    def __init__(self, display_size = (19, 9), cache_size = (-1, 100), history_length = 100, host = "", port = 11434, model = "llama:3.2", stream = False, prompt_c = "\x00", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.chat_history", ram = True, chat_id = 0):
+    def __init__(self, display_size = (19, 9), cache_size = (-1, 100), history_length = 100, host = "", port = 11434, model = "llama:3.2", backend = "ollama", api_key = "", stream = False, prompt_c = "\x00", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.chat_history", ram = True, chat_id = 0):
         self.display_width = display_size[0]
         self.display_height = display_size[1]
         self.display_width_with_prompt = display_size[0] + len(prompt_c)
@@ -52,10 +53,17 @@ class ChatShell(Shell):
         self.stats = ""
         self.loading = True
         self._line_chars = []  # list of chars for current input line (mutable, no alloc on append)
-        self.chat = Chat(host = host, port = port, model = model, stream = stream, cache_file = path_join(self.cache_path, "chat_request_cache.%d.txt" % self.id))
+        self.backend = backend
+        self.api_key = api_key
+        self.chat = self._create_chat(host, port, model, stream)
         self.chat_log = None
         self.load_history()
-        # self.clear()
+
+    def _create_chat(self, host, port, model, stream = False):
+        if self.backend == "openai":
+            return OpenAIChat(host = host, port = port, model = model, api_key = self.api_key, context_length = 10)
+        else:
+            return OllamaChat(host = host, port = port, model = model, stream = stream, cache_file = path_join(self.cache_path, "chat_request_cache.%d.txt" % self.id))
         
     # def clear(self):
     #     self.term = StringIO()
@@ -151,6 +159,12 @@ class ChatShell(Shell):
                     elif cmd.startswith("set port:"):
                         self.chat.port = cmd.split(":")[-1].strip()
                         self.write_lines("port: %s" % self.chat.port, end = True)
+                    elif cmd.startswith("set backend:"):
+                        self.backend = cmd.split(":")[-1].strip()
+                        self.write_lines("backend: %s" % self.backend, end = True)
+                    elif cmd.startswith("set key:"):
+                        self.api_key = ":".join(cmd.split(":")[1:]).strip()
+                        self.write_lines("key set", end = True)
                     elif cmd == "models":
                         success, models = self.chat.models()
                         if success:
@@ -290,14 +304,17 @@ def main(*args, **kwargs):
         model = "llama3.2"
         host = "192.168.4.30"
         port = 11434
-        stream = False
+        backend = "ollama"
+        api_key = ""
         if len(kwargs["args"]) > 0:
             host = kwargs["args"][0]
         if len(kwargs["args"]) > 1:
             port = kwargs["args"][1]
         if len(kwargs["args"]) > 2:
-            stream = True if int(kwargs["args"][2]) == 1 else False
-        s = ChatShell(display_size = (39, 28), host = host, port = port, model = model, stream = stream, chat_id = shell_obj_id)
+            backend = kwargs["args"][2]
+        if len(kwargs["args"]) > 3:
+            api_key = kwargs["args"][3]
+        s = ChatShell(display_size = (39, 28), host = host, port = port, model = model, backend = backend, api_key = api_key, chat_id = shell_obj_id)
         shell.current_shell = s
         yield task.condition.load(sleep = 0, wait_msg = True, send_msgs = [
             Message.get().load({"frame": s.get_using_ram_frame(), "cursor": s.get_cursor_position(1)}, receiver = display_id)
