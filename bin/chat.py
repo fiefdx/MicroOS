@@ -16,7 +16,7 @@ coroutine = True
 
 
 class ChatShell(Shell):
-    def __init__(self, display_size = (19, 9), cache_size = (-1, 100), history_length = 100, host = "", port = 11434, model = "llama:3.2", backend = "ollama", api_key = "", stream = False, prompt_c = "\x00", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.chat_history", ram = True, chat_id = 0):
+    def __init__(self, display_size = (19, 9), cache_size = (-1, 100), history_length = 100, host = "", port = 8080, model = "llama:3.2", backend = "openai", api_key = "", stream = False, prompt_c = "\x00", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.chat_history", ram = True, chat_id = 0):
         self.display_width = display_size[0]
         self.display_height = display_size[1]
         self.display_width_with_prompt = display_size[0] + len(prompt_c)
@@ -302,9 +302,9 @@ def main(*args, **kwargs):
     shell.disable_output = True
     try:
         model = "llama3.2"
-        host = "192.168.4.30"
-        port = 11434
-        backend = "ollama"
+        host = "192.168.4.77"
+        port = 8080
+        backend = "openai"
         api_key = ""
         if len(kwargs["args"]) > 0:
             host = kwargs["args"][0]
