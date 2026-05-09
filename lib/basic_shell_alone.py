@@ -524,8 +524,8 @@ class BasicShell(object):
         
     def kill_program(self):
         if self.run_program_id != None:
-            #self.run_program_id = None
             self.scheduler.add_task(Task.get().load(self.kill_task, "kill", kwargs = {}))
+            self.run_program_id = None
             
     def send_input(self, task, name, msg = ""):
         yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": msg}, receiver = self.run_program_id)])
@@ -545,7 +545,7 @@ class BasicShell(object):
             self.cache[-1] += c
             if len(self.cache[-1]) > self.display_width_with_prompt:
                 self.cache.append(" " + self.cache[-1][self.display_width_with_prompt:])
-                self.cache[-2] = self.cache[-2][:display_width_with_prompt]
+                self.cache[-2] = self.cache[-2][:self.display_width_with_prompt]
                 
         if len(self.cache) > self.cache_lines:
             self.cache.pop(0)
