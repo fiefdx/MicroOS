@@ -328,6 +328,8 @@ class Program:
         self.__data.restore(0) # reset data pointer
 
         line_numbers = self.line_numbers()
+        # Pre-compute line-number-to-index map for O(1) GOTO/GOSUB/RETURN lookups
+        line_to_index = {ln: i for i, ln in enumerate(line_numbers)}
         frame = shell.input_counter
         frame_previous = frame
         n = 0
@@ -386,10 +388,8 @@ class Program:
                 if flowsignal:
                     if flowsignal.ftype == FlowSignal.SIMPLE_JUMP:
                         # GOTO or conditional branch encountered
-                        try:
-                            index = line_numbers.index(flowsignal.ftarget)
-
-                        except ValueError:
+                        index = line_to_index.get(flowsignal.ftarget)
+                        if index is None:
                             shell.run_program_id = None
                             execute_print("", end = "\n", terminated = True)
                             raise RuntimeError("Invalid line number supplied in GOTO or conditional branch: "
@@ -411,10 +411,8 @@ class Program:
 
                         # Set the index to be the subroutine start line
                         # number
-                        try:
-                            index = line_numbers.index(flowsignal.ftarget)
-
-                        except ValueError:
+                        index = line_to_index.get(flowsignal.ftarget)
+                        if index is None:
                             shell.run_program_id = None
                             execute_print("", end = "\n", terminated = True)
                             raise RuntimeError("Invalid line number supplied in subroutine call: "
@@ -426,19 +424,19 @@ class Program:
                         # Subroutine return encountered
                         # Pop return address from the stack
                         try:
-                            index = line_numbers.index(self.__return_stack.pop())
-
-                        except ValueError:
-                            shell.run_program_id = None
-                            execute_print("", end = "\n", terminated = True)
-                            raise RuntimeError("Invalid subroutine return in line " +
-                                               str(self.get_next_line_number()))
-
+                            ret_line = self.__return_stack.pop()
                         except IndexError:
                             shell.run_program_id = None
                             execute_print("", end = "\n", terminated = True)
                             raise RuntimeError("RETURN encountered without corresponding " +
                                                "subroutine call in line " + str(self.get_next_line_number()))
+
+                        index = line_to_index.get(ret_line)
+                        if index is None:
+                            shell.run_program_id = None
+                            execute_print("", end = "\n", terminated = True)
+                            raise RuntimeError("Invalid subroutine return in line " +
+                                               str(self.get_next_line_number()))
 
                         self.set_next_line_number(line_numbers[index])
 
@@ -508,19 +506,19 @@ class Program:
                         # Loop repeat encountered
                         # Pop the loop start address from the stack
                         try:
-                            index = line_numbers.index(self.__return_loop.pop(flowsignal.floop_var))
-
-                        except ValueError:
-                            shell.run_program_id = None
-                            execute_print("", end = "\n", terminated = True)
-                            raise RuntimeError("Invalid loop exit in line " +
-                                               str(self.get_next_line_number()))
-
+                            loop_line = self.__return_loop.pop(flowsignal.floop_var)
                         except KeyError:
                             execute_print("", end = "\n", terminated = True)
                             shell.run_program_id = None
                             raise RuntimeError("NEXT encountered without corresponding " +
                                                "FOR loop in line " + str(self.get_next_line_number()))
+
+                        index = line_to_index.get(loop_line)
+                        if index is None:
+                            shell.run_program_id = None
+                            execute_print("", end = "\n", terminated = True)
+                            raise RuntimeError("Invalid loop exit in line " +
+                                               str(self.get_next_line_number()))
 
                         self.set_next_line_number(line_numbers[index])
 
