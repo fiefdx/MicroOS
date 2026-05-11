@@ -277,10 +277,7 @@ class Scheduler(object):
         global _log_buffer
         try:
             if self.log_to:
-                if _log_buffer is None:
-                    _log_buffer = StringIO()
-                _log_buffer.truncate(0)
-                _log_buffer.seek(0)
+                _log_buffer = StringIO()
                 sys.print_exception(e, _log_buffer)
                 self.tasks_ids[self.log_to].put_message(Message.get().load({"output": head + _log_buffer.getvalue()}, sender = 0, sender_name = self.name))
             else:

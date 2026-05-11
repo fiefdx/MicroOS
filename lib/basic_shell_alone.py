@@ -518,13 +518,14 @@ class BasicShell(object):
     def shutdown(self):
         pass
 
-    def kill_task(self, task, name):
-        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": "Ctrl-C"}, receiver = self.run_program_id)])
+    def kill_task(self, task, name, program_id=None):
+        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": "Ctrl-C"}, receiver = program_id)])
         self.run_program_id = None
-        
+
     def kill_program(self):
-        if self.run_program_id != None:
-            self.scheduler.add_task(Task.get().load(self.kill_task, "kill", kwargs = {}))
+        program_id = self.run_program_id
+        if program_id is not None:
+            self.scheduler.add_task(Task.get().load(self.kill_task, "kill", kwargs = {"program_id": program_id}))
             self.run_program_id = None
             
     def send_input(self, task, name, msg = ""):
