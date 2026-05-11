@@ -29,7 +29,7 @@ from lib import sdcard
 # import font7
 from lib.display import ILI9488, Colors as C
 from lib.scheduler import Scheduler, Condition, Task, Message
-from lib.common import ticks_ms, ticks_add, ticks_diff, sleep_ms, Resource
+from lib.common import ticks_ms, ticks_add, ticks_diff, sleep_ms, Resource, KEYS_MAP
 from lib.shell import Shell
 from lib.keyboard import Keyboard
 from lib.basic_shell_alone import BasicShell
@@ -388,91 +388,47 @@ def shell(task, name, scheduler = None, display_id = None, storage_id = None):
             
 def keyboard_input(task, name, scheduler = None, interval = 50, shell_id = None, display_id = None):
     k = Keyboard(settings.keyboard_scl, settings.keyboard_sda, i2c = settings.keyboard_i2c, freq = settings.keyboard_baudrate)
-    key_map_ignore = {
-        b'\x81': "F1",
-        b'\x82': "F2",
-        b'\x83': "F3",
-#         b'\x84': "F4",
-#         b'\x85': "F5",
-        b'\x86': "F6",
-        b'\x87': "F7",
-        b'\x88': "F8",
-#         b'\x89': "F9",
-#         b'\x90': "F10",
-        b'\xc1': "CAP",
-        b'\x1b[F': "END",
-        b'\x1b[H': "HOME",
-        b'\xd0': "BREAK",
-        b'\x1b[3~': "DEL",
-        b'\x1b\xd1': "INS",
-    }
-    key_map = {
-        b'\x13': "SAVE",
-        b'\x01': "Ctrl-A",
-        b'\x02': "Ctrl-B",
-        b'\x03': "Ctrl-C",
-        b'\x07': "Ctrl-G",
-        b'\r': "Ctrl-M",
-        b'\x16': "Ctrl-V",
-        b'\x18': "Ctrl-X",
-        b'\x1a': "Ctrl-Z",
-        b'\x84': "BY",
-        b'\x85': "BA",
-        b'\x89': "BX",
-        b'\x90': "BB",
-    }
     Resource.keyboard = k
+    msg_get = Message.get
     yield task.condition.load(sleep = 1000)
     key_sound = const(2000)
     enable_sound = False
     keys = bytearray(30)
+
+    def beep():
+        return task.condition.load(sleep = 0, wait_msg = True, send_msgs = [msg_get().load({"freq": key_sound, "volume": 5000, "length": 5}, receiver = scheduler.sound_id, need_reply = True)])
+
     while True:
         try:
+            if k.disable:
+                yield task.condition.load(sleep = 1000)
+                continue
+
+            yield task.condition.load(sleep = interval)
             n = k.readinto(keys)
-            if n is not None:
-                # print("size: ", n)
-                # print("keys: ", keys[:n])
-                if n == 1 or n == 2 or n == 3 or n == 4:
-                    code = bytes(keys[:n])
-                    # print("code: ", code, code in key_map)
-                    if code not in key_map_ignore:
-                        try:
-#                             key = code.decode()
-#                             print("key1: ", key)
-#                             if n == 2 and code.find(b'\x1b') == 0:
-#                                 if key[1] == "S":
-#                                     key = "SAVE"
-#                                 elif key[1] == "C":
-#                                     key = "Ctrl-C"
-#                                 elif key[1] == "X":
-#                                     key = "Ctrl-X"
-#                                 elif key[1] == "V":
-#                                     key = "Ctrl-V"
-                            if code in key_map:
-                                key = key_map[code]
-                            else:
-                                key = code.decode()
-                            # print("key2: ", key)
-                            if key == "Ctrl-M":
-                                if enable_sound:
-                                    enable_sound = False
-                                else:
-                                    yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"freq": key_sound, "volume": 5000, "length": 5}, receiver = scheduler.sound_id)])
-                                    enable_sound = True
-                            else:
-                                if scheduler.shell and scheduler.shell.session_task_id and scheduler.exists_task(scheduler.shell.session_task_id):
-                                    if enable_sound:
-                                        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"freq": key_sound, "volume": 5000, "length": 5}, receiver = scheduler.sound_id)])
-                                    yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"msg": key, "keys": []}, receiver = scheduler.shell.session_task_id)])
-                                else:
-                                    if enable_sound:
-                                        yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"freq": key_sound, "volume": 5000, "length": 5}, receiver = scheduler.sound_id)])
-                                    yield task.condition.load(sleep = 0, send_msgs = [Message.get().load({"char": key}, receiver = shell_id)])
-                        except Exception as e:
-                            print("Except: ", code, e)
+            if n:
+                n = 1
+                for i in range(n):
+                    code = bytes(keys[i:i+1])
+                    key = KEYS_MAP.get(code)
+                    if key is None:
+                        continue
+
+                    if key == "Ctrl-M":
+                        enable_sound = not enable_sound
+                        if enable_sound:
+                            yield beep()
+                            task.get_message().release()
+                    else:
+                        if enable_sound:
+                            yield beep()
+                            task.get_message().release()
+                        if scheduler.shell and scheduler.shell.session_task_id and scheduler.exists_task(scheduler.shell.session_task_id):
+                            yield task.condition.load(sleep = 0, send_msgs = [msg_get().load({"msg": key, "keys": [key]}, receiver = scheduler.shell.session_task_id)])
+                        else:
+                            yield task.condition.load(sleep = 0, send_msgs = [msg_get().load({"char": key}, receiver = shell_id)])
         except Exception as e:
             print(e)
-        yield task.condition.load(sleep = interval)
         
         
 def sound_output(task, name, scheduler = None):
