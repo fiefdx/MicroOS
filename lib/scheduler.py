@@ -280,6 +280,7 @@ class Scheduler(object):
                 _log_buffer = StringIO()
                 sys.print_exception(e, _log_buffer)
                 self.tasks_ids[self.log_to].put_message(Message.get().load({"output": head + _log_buffer.getvalue()}, sender = 0, sender_name = self.name))
+                print(head + _log_buffer.getvalue())
             else:
                 sys.print_exception(e)
         except Exception as e:

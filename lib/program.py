@@ -28,7 +28,7 @@ from .flowsignal import FlowSignal
 from .lexer import Lexer
 
 from .scheduler import Scheduler, Condition, Task, Message
-from .dictfile import DictFile, DictFileSlow
+from .dictfile2 import DictFile, DictFileSlow
 from .common import ticks_ms, ticks_add, ticks_diff, sleep_ms
 
 

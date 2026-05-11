@@ -19,6 +19,7 @@ mpy-cross ./basictoken.py
 mpy-cross ./chunk.py
 mpy-cross ./common.py
 mpy-cross ./dictfile.py
+mpy-cross ./dictfile2.py
 mpy-cross ./display.py
 mpy-cross ./flowsignal.py
 mpy-cross ./font.py
