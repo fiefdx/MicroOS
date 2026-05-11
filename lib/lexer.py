@@ -87,8 +87,9 @@ class Lexer:
                     c = self.__get_next_char()
 
                 else:
+                    chars = []
                     while True:
-                        token.lexeme += c  # Append the current char to the lexeme
+                        chars.append(c)
                         c = self.__get_next_char()
 
                         if c == '':
@@ -97,6 +98,7 @@ class Lexer:
                         if c == '"':
                             c = self.__get_next_char()  # Advance past terminating quote
                             break
+                    token.lexeme = ''.join(chars)
 
             # Process numbers
             elif c.isdigit():
@@ -104,8 +106,9 @@ class Lexer:
                 found_point = False
 
                 # Consume all of the digits, including any decimal point
+                chars = []
                 while True:
-                    token.lexeme += c  # Append the current char to the lexeme
+                    chars.append(c)
                     c = self.__get_next_char()
 
                     # Break if next character is not a digit
@@ -122,12 +125,14 @@ class Lexer:
 
                         else:
                             break
+                token.lexeme = ''.join(chars)
 
             # Process keywords and names
             elif c.isalpha():
                 # Consume all of the letters
+                chars = []
                 while True:
-                    token.lexeme += c  # append the current char to the lexeme
+                    chars.append(c)
                     c = self.__get_next_char()
 
                     # Break if not a letter or a dollar symbol
@@ -136,7 +141,7 @@ class Lexer:
                         break
 
                 # Normalise keywords and names to upper case
-                token.lexeme = token.lexeme.upper()
+                token.lexeme = ''.join(chars).upper()
 
                 # Determine if the lexeme is a variable name or a
                 # reserved word
@@ -148,9 +153,11 @@ class Lexer:
 
                 # Remark Statements - process rest of statement without checks
                 if token.lexeme == "REM":
-                    while c!= '':
-                        token.lexeme += c  # Append the current char to the lexeme
+                    rem_chars = []
+                    while c != '':
+                        rem_chars.append(c)
                         c = self.__get_next_char()
+                    token.lexeme += ''.join(rem_chars)
 
             # Process operator symbols
             elif c in Token.smalltokens:
