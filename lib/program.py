@@ -353,7 +353,6 @@ class Program:
                 msg = task.get_message()
                 if msg:
                     if msg.content["msg"] == "Ctrl-C":
-                        msg.release()
                         execute_print("Program terminated", end = '\n', terminated = True)
                         stop = True
                         # raise StopIteration
