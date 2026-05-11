@@ -183,7 +183,14 @@ def display(task, name, scheduler = None):
 #                                     wri.printstring(clear_line)
                             else:
                                 lcd.rect(0 , n * line_height + y_offset, 320, (n + 1) * line_height, lcd.rgb(0, 0, 0), True)
-                                lcd.text(l, x, n * line_height + y_offset, lcd.rgb(1, 1, 1))
+                                if l[0] == "\x00":
+                                    lcd.text(">", x, n * line_height + y_offset, C.red)
+                                    lcd.text(l[1:], x + 8, n * line_height + y_offset, lcd.rgb(1, 1, 1))
+                                elif l[0] == "\x01":
+                                    lcd.text("#", x, n * line_height + y_offset, C.red)
+                                    lcd.text(l[1:], x + 8, n * line_height + y_offset, lcd.rgb(1, 1, 1))
+                                else:
+                                    lcd.text(l, x, n * line_height + y_offset, lcd.rgb(1, 1, 1))
 #                                     wri.set_textpos(lcd, n, 0)
 #                                     wri.printstring(clear_line)
 #                                     wri.set_textpos(lcd, n, 0)

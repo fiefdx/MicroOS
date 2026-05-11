@@ -19,7 +19,7 @@ from .common import exists, path_join, isfile, isdir, path_split, mkdirs, copy, 
 
 
 class BasicShell(object):
-    def __init__(self, display_size = (19, 9), cache_size = (-1, 50), history_length = 50, prompt_c = ">", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.history_basic", bin_path = "/bin", ram_path = "/.cache/.ram"):
+    def __init__(self, display_size = (19, 9), cache_size = (-1, 50), history_length = 50, prompt_c = "\x00", scheduler = None, display_id = None, storage_id = None, history_file_path = "/.cache/.history_basic", bin_path = "/bin", ram_path = "/.cache/.ram"):
         self.display_width = const(display_size[0])
         self.display_height = const(display_size[1])
         self.display_width_with_prompt = const(display_size[0] + len(prompt_c))
@@ -52,7 +52,7 @@ class BasicShell(object):
         self.ram = False
         if exists(self.ram_path):
             self.ram = True
-            self.prompt_c = "#"
+            self.prompt_c = "\x01"
         Program.print = self.print
         self.program = Program(ram = self.ram)
         self.run_program_id = None
