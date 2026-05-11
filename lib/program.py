@@ -105,19 +105,19 @@ class BASICData:
 
         sign = 1
         for token in tokenlist[1:]:
-            if token.category != Token.COMMA:
-                #self.data_values.append(token.lexeme)
+            if token[0] != Token.COMMA:
+                #self.data_values.append(token[1])
 
-                if token.category == Token.STRING:
-                    self.data_values.append(token.lexeme)
-                elif token.category == Token.UNSIGNEDINT:
-                    self.data_values.append(sign*int(token.lexeme))
-                elif token.category == Token.UNSIGNEDFLOAT:
-                    self.data_values.append(sign*eval(token.lexeme))
-                elif token.category == Token.MINUS:
+                if token[0] == Token.STRING:
+                    self.data_values.append(token[1])
+                elif token[0] == Token.UNSIGNEDINT:
+                    self.data_values.append(sign*int(token[1]))
+                elif token[0] == Token.UNSIGNEDFLOAT:
+                    self.data_values.append(sign*eval(token[1]))
+                elif token[0] == Token.MINUS:
                     sign = -1
                 #else:
-                    #self.data_values.append(token.lexeme)
+                    #self.data_values.append(token[1])
             else:
                 sign = 1
 
@@ -185,15 +185,15 @@ class Program:
         line_text = str(line_number) + " "
 
         statement = self.__program[line_number]
-        if statement[0].category == Token.DATA:
+        if statement[0][0] == Token.DATA:
             statement = self.__data.getTokens(line_number)
         for token in statement:
             # Add in quotes for strings
-            if token.category == Token.STRING:
-                line_text += '"' + token.lexeme + '" '
+            if token[0] == Token.STRING:
+                line_text += '"' + token[1] + '" '
 
             else:
-                line_text += token.lexeme + " "
+                line_text += token[1] + " "
         line_text += "\n"
         return line_text
 
@@ -481,11 +481,11 @@ class Program:
                             next_line_number = line_numbers[index]
                             temp_tokenlist = self.__program[next_line_number]
 
-                            if temp_tokenlist[0].category == Token.NEXT and \
+                            if temp_tokenlist[0][0] == Token.NEXT and \
                                len(temp_tokenlist) > 1:
                                 # Check the loop variable to ensure we have not found
                                 # the NEXT statement for a nested loop
-                                if temp_tokenlist[1].lexeme == flowsignal.ftarget:
+                                if temp_tokenlist[1][1] == flowsignal.ftarget:
                                     # Move the statement after this NEXT, if there
                                     # is one
                                     index = index + 1

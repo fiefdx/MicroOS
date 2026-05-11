@@ -31,7 +31,7 @@ def _serialize(tokens):
 
 
 def _deserialize(data):
-    """Convert [[cat, lex], ...] from JSON to a list of CompactToken.
+    """Return a list of (category, lexeme) tuples from JSON.
 
     Also handles legacy format from dictfile.py:
         {"d": [[col, cat, lex], ...]}  or  [[col, cat, lex], ...]
@@ -44,8 +44,8 @@ def _deserialize(data):
         return []
     # Detect legacy 3-element (col, cat, lex) vs new 2-element (cat, lex)
     if len(data[0]) == 3:
-        return [CompactToken(dd[1], dd[2]) for dd in data]
-    return [CompactToken(dd[0], dd[1]) for dd in data]
+        return [(dd[1], dd[2]) for dd in data]
+    return [(dd[0], dd[1]) for dd in data]
 
 
 class DictFile(object):

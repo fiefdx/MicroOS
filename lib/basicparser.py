@@ -226,7 +226,7 @@ class BASICParser:
             # If statements will always be the last statement processed on a line so
             # any colons found after an IF are part of the condition execution statements
             # and will be processed in the recursive call to parse
-            if token.category == token.IF:
+            if token[0] == Token.IF:
                 # process IF statement to move __tokenidex to the code block
                 # of the THEN or ELSE and then call PARSE recursively to process that code block
                 # this will terminate the token loop by RETURNing to the calling module
@@ -252,7 +252,7 @@ class BASICParser:
                     # in this syntax the then or else code block is not a legal basic statement
                     # so recursive processing can't be used
                     return flow
-            elif token.category == token.COLON:
+            elif token[0] == Token.COLON:
                 # Found a COLON, process tokens found to this point
                 linetokenindex += self.__tokenindex
                 self.__tokenindex = 0
@@ -266,7 +266,7 @@ class BASICParser:
 
                 linetokenindex += 1
                 self.__tokenlist.clear()
-            elif token.category == token.ELSE and self.__tokenlist[0].category != token.OPEN:
+            elif token[0] == Token.ELSE and self.__tokenlist[0][0] != Token.OPEN:
                 # if we find an ELSE and we are not processing an OPEN statement, we must
                 # be in a recursive call and be processing a THEN block
                 # since we're processing the THEN block we are done if we hit an ELSE
@@ -297,7 +297,7 @@ class BASICParser:
         """Consumes a token from the list
 
         """
-        if self.__token.category == expected_category:
+        if self.__token[0] == expected_category:
             self.__advance()
 
         else:
@@ -311,7 +311,7 @@ class BASICParser:
         how to branch if necessary, None otherwise
 
         """
-        return self.__stmt_map.get(self.__token.category, self.__simplestmt)()
+        return self.__stmt_map.get(self.__token[0], self.__simplestmt)()
 
     def __process_token_input(self):
         if self.__wait == "_no_wait":
@@ -328,12 +328,12 @@ class BASICParser:
         how to branch if necessary, None otherwise
 
         """
-        if self.__token.category in self.__simplestmt_map:
-            return self.__simplestmt_map[self.__token.category]()
+        if self.__token[0] in self.__simplestmt_map:
+            return self.__simplestmt_map[self.__token[0]]()
         else:
             # Ignore comments, but raise an error
             # for anything else
-            if self.__token.category != Token.REM:
+            if self.__token[0] != Token.REM:
                 raise RuntimeError('Expecting program statement in line '
                                    + str(self.__line_number))
 
@@ -347,7 +347,7 @@ class BASICParser:
         self.__advance()   # Advance past PRINT token
 
         fileIO = False
-        if self.__token.category == Token.HASH:
+        if self.__token[0] == Token.HASH:
             fileIO = True
 
             # Process the # keyword
@@ -361,12 +361,12 @@ class BASICParser:
                 raise RuntimeError("PRINT: file #"+str(filenum)+" not opened in line " + str(self.__line_number))
 
             # Process the comma
-            if self.__tokenindex < len(self.__tokenlist) and self.__token.category != Token.COLON:
+            if self.__tokenindex < len(self.__tokenlist) and self.__token[0] != Token.COLON:
                 self.__consume(Token.COMMA)
 
         # Check there are items to print
         if not self.__tokenindex >= len(self.__tokenlist):
-            prntTab = (self.__token.category == Token.TAB)
+            prntTab = (self.__token[0] == Token.TAB)
             self.__logexpr()
 
             if prntTab:
@@ -391,14 +391,14 @@ class BASICParser:
                 else:
                     self.print(self.__operand_stack.pop(), end='')
 
-            while self.__token.category == Token.SEMICOLON:
+            while self.__token[0] == Token.SEMICOLON:
                 if self.__tokenindex == len(self.__tokenlist) - 1:
                     # If a semicolon ends this line, don't print
                     # a newline.. a-la ms-basic
                     self.__advance()
                     return
                 self.__advance()
-                prntTab = (self.__token.category == Token.TAB)
+                prntTab = (self.__token[0] == Token.TAB)
                 self.__logexpr()
 
                 if prntTab:
@@ -489,11 +489,11 @@ class BASICParser:
         table.
 
         """
-        left = self.__token.lexeme  # Save lexeme of
+        left = self.__token[1]  # Save lexeme of
                                     # the current token
         self.__advance()
 
-        if self.__token.category == Token.LEFTPAREN:
+        if self.__token[0] == Token.LEFTPAREN:
             # We are assigning to an array
             self.__arrayassignmentstmt(left)
 
@@ -528,7 +528,7 @@ class BASICParser:
             # Extract the array name, append a suffix so
             # that we can distinguish from simple variables
             # in the symbol table
-            name = self.__token.lexeme + '_array'
+            name = self.__token[1] + '_array'
             self.__advance()  # Advance past array name
 
             self.__consume(Token.LEFTPAREN)
@@ -539,7 +539,7 @@ class BASICParser:
                 self.__expr()
                 dimensions.append(self.__operand_stack.pop())
 
-                while self.__token.category == Token.COMMA:
+                while self.__token[0] == Token.COMMA:
                     self.__advance()  # Advance past comma
                     self.__expr()
                     dimensions.append(self.__operand_stack.pop())
@@ -582,7 +582,7 @@ class BASICParser:
             self.__expr()
             indexvars.append(self.__operand_stack.pop())
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance()  # Advance past comma
                 self.__expr()
                 indexvars.append(self.__operand_stack.pop())
@@ -643,18 +643,18 @@ class BASICParser:
         # Process the FOR keyword
         self.__consume(Token.FOR)
 
-        if self.__token.category == Token.INPUT:
+        if self.__token[0] == Token.INPUT:
             accessMode = "r"
-        elif self.__token.category == Token.APPEND:
+        elif self.__token[0] == Token.APPEND:
             accessMode = "r+"
-        elif self.__token.category == Token.OUTPUT:
+        elif self.__token[0] == Token.OUTPUT:
             accessMode = "w+"
         else:
             raise SyntaxError('Invalid Open access mode in line ' + str(self.__line_number))
 
         self.__advance() # Advance past access type
 
-        if self.__token.lexeme != "AS":
+        if self.__token[1] != "AS":
             raise SyntaxError('Expecting AS in line ' + str(self.__line_number))
 
         self.__advance() # Advance past AS keyword
@@ -667,11 +667,11 @@ class BASICParser:
         filenum = self.__operand_stack.pop()
 
         branchOnError = False
-        if self.__token.category == Token.ELSE:
+        if self.__token[0] == Token.ELSE:
             branchOnError = True
             self.__advance() # Advance past ELSE
 
-            if self.__token.category == Token.GOTO:
+            if self.__token[0] == Token.GOTO:
                 self.__advance()    # Advance past optional GOTO
 
             self.__expr()
@@ -773,7 +773,7 @@ class BASICParser:
         self.__advance()  # Advance past INPUT token
 
         fileIO = False
-        if self.__token.category == Token.HASH:
+        if self.__token[0] == Token.HASH:
             fileIO = True
 
             # Process the # keyword
@@ -790,7 +790,7 @@ class BASICParser:
             self.__consume(Token.COMMA)
 
         prompt = '? '
-        if self.__token.category == Token.STRING:
+        if self.__token[0] == Token.STRING:
             if fileIO:
                 raise SyntaxError('Input prompt specified for file I/O ' +
                                 'in line ' + str(self.__line_number))
@@ -803,15 +803,15 @@ class BASICParser:
         # Acquire the comma separated input variables
         self.variables = []
         if not self.__tokenindex >= len(self.__tokenlist):
-            if self.__token.category != Token.NAME:
+            if self.__token[0] != Token.NAME:
                 raise ValueError('Expecting NAME in INPUT statement ' +
                                  'in line ' + str(self.__line_number))
-            self.variables.append(self.__token.lexeme)
+            self.variables.append(self.__token[1])
             self.__advance()  # Advance past variable
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance()  # Advance past comma
-                self.variables.append(self.__token.lexeme)
+                self.variables.append(self.__token[1])
                 self.__advance()  # Advance past variable
 
         self.__prompt = prompt
@@ -879,7 +879,7 @@ class BASICParser:
         self.__advance()  # Advance past INPUT token
 
         fileIO = False
-        if self.__token.category == Token.HASH:
+        if self.__token[0] == Token.HASH:
             fileIO = True
 
             # Process the # keyword
@@ -896,7 +896,7 @@ class BASICParser:
             self.__consume(Token.COMMA)
 
         prompt = '? '
-        if self.__token.category == Token.STRING:
+        if self.__token[0] == Token.STRING:
             if fileIO:
                 raise SyntaxError('Input prompt specified for file I/O ' +
                                 'in line ' + str(self.__line_number))
@@ -909,15 +909,15 @@ class BASICParser:
         # Acquire the comma separated input variables
         variables = []
         if not self.__tokenindex >= len(self.__tokenlist):
-            if self.__token.category != Token.NAME:
+            if self.__token[0] != Token.NAME:
                 raise ValueError('Expecting NAME in INPUT statement ' +
                                  'in line ' + str(self.__line_number))
-            variables.append(self.__token.lexeme)
+            variables.append(self.__token[1])
             self.__advance()  # Advance past variable
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance()  # Advance past comma
-                variables.append(self.__token.lexeme)
+                variables.append(self.__token[1])
                 self.__advance()  # Advance past variable
 
         valid_input = False
@@ -990,12 +990,12 @@ class BASICParser:
         # Acquire the comma separated input variables
         variables = []
         if not self.__tokenindex >= len(self.__tokenlist):
-            variables.append(self.__token.lexeme)
+            variables.append(self.__token[1])
             self.__advance()  # Advance past variable
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance()  # Advance past comma
-                variables.append(self.__token.lexeme)
+                variables.append(self.__token[1])
                 self.__advance()  # Advance past variable
 
         # Gather input from the DATA statement into the variables
@@ -1036,8 +1036,8 @@ class BASICParser:
         self.__term()  # Pushes value of left term
                        # onto top of stack
 
-        while self.__token.category in [Token.PLUS, Token.MINUS]:
-            savedcategory = self.__token.category
+        while self.__token[0] in [Token.PLUS, Token.MINUS]:
+            savedcategory = self.__token[0]
             self.__advance()
             self.__term()  # Pushes value of right term
                            # onto top of stack
@@ -1060,8 +1060,8 @@ class BASICParser:
                          # minuses
         self.__factor()  # Leaves value of term on top of stack
 
-        while self.__token.category in [Token.TIMES, Token.DIVIDE, Token.MODULO]:
-            savedcategory = self.__token.category
+        while self.__token[0] in [Token.TIMES, Token.DIVIDE, Token.MODULO]:
+            savedcategory = self.__token[0]
             self.__advance()
             self.__sign = 1  # Initialise sign
             self.__factor()  # Leaves value of term on top of stack
@@ -1083,42 +1083,42 @@ class BASICParser:
         operand stack.
 
         """
-        if self.__token.category == Token.PLUS:
+        if self.__token[0] == Token.PLUS:
             self.__advance()
             self.__factor()
 
-        elif self.__token.category == Token.MINUS:
+        elif self.__token[0] == Token.MINUS:
             self.__sign = -self.__sign
             self.__advance()
             self.__factor()
 
-        elif self.__token.category == Token.UNSIGNEDINT:
-            self.__operand_stack.append(self.__sign*int(self.__token.lexeme))
+        elif self.__token[0] == Token.UNSIGNEDINT:
+            self.__operand_stack.append(self.__sign*int(self.__token[1]))
             self.__advance()
 
-        elif self.__token.category == Token.UNSIGNEDFLOAT:
-            self.__operand_stack.append(self.__sign*float(self.__token.lexeme))
+        elif self.__token[0] == Token.UNSIGNEDFLOAT:
+            self.__operand_stack.append(self.__sign*float(self.__token[1]))
             self.__advance()
 
-        elif self.__token.category == Token.STRING:
-            self.__operand_stack.append(self.__token.lexeme)
+        elif self.__token[0] == Token.STRING:
+            self.__operand_stack.append(self.__token[1])
             self.__advance()
 
         elif (
-            self.__token.category == Token.NAME
-            and self.__token.category not in Token.functions
+            self.__token[0] == Token.NAME
+            and self.__token[0] not in Token.functions
         ):
             # Check if this is a simple or array variable
             # MSBASIC Allows simple and complex variables to have the
             # same id.  This is probably a bad idea, but it's used in
             # some old example programs.  So check if next token is parens
             if (
-                (self.__token.lexeme + "_array") in self.__symbol_table
+                (self.__token[1] + "_array") in self.__symbol_table
                 and self.__tokenindex < len(self.__tokenlist) - 1
-                and self.__tokenlist[self.__tokenindex + 1].category == Token.LEFTPAREN
+                and self.__tokenlist[self.__tokenindex + 1][0] == Token.LEFTPAREN
             ):
                 # Capture the current lexeme
-                arrayname = self.__token.lexeme + "_array"
+                arrayname = self.__token[1] + "_array"
 
                 # Array must be processed
                 # Capture the index variables
@@ -1131,7 +1131,7 @@ class BASICParser:
                         self.__expr()
                         indexvars.append(self.__operand_stack.pop())
 
-                        while self.__token.category == Token.COMMA:
+                        while self.__token[0] == Token.COMMA:
                             self.__advance()  # Advance past comma
                             self.__expr()
                             indexvars.append(self.__operand_stack.pop())
@@ -1152,17 +1152,17 @@ class BASICParser:
                         "Array used without index in line " + str(self.__line_number)
                     )
 
-            elif self.__token.lexeme in self.__symbol_table:
+            elif self.__token[1] in self.__symbol_table:
                 # Simple variable must be processed
-                self.__operand_stack.append(self.__sign*self.__symbol_table[self.__token.lexeme])
+                self.__operand_stack.append(self.__sign*self.__symbol_table[self.__token[1]])
 
             else:
-                raise RuntimeError('Name ' + self.__token.lexeme + ' is not defined' +
+                raise RuntimeError('Name ' + self.__token[1] + ' is not defined' +
                                    ' in line ' + str(self.__line_number))
 
             self.__advance()
 
-        elif self.__token.category == Token.LEFTPAREN:
+        elif self.__token[0] == Token.LEFTPAREN:
             self.__advance()
 
             # Save sign because expr() calls term() which resets
@@ -1176,13 +1176,13 @@ class BASICParser:
 
             self.__consume(Token.RIGHTPAREN)
 
-        elif self.__token.category in Token.functions:
-            self.__operand_stack.append(self.__evaluate_function(self.__token.category))
+        elif self.__token[0] in Token.functions:
+            self.__operand_stack.append(self.__evaluate_function(self.__token[0]))
 
         else:
             raise RuntimeError('Expecting factor in numeric expression' +
                                ' in line ' + str(self.__line_number) +
-                               self.__token.lexeme)
+                               self.__token[1])
 
     def __get_array_val(self, BASICarray, indexvars):
         """Extracts the value from the given BASICArray at the specified indexes
@@ -1232,7 +1232,7 @@ class BASICParser:
         # Process the THEN part and save the jump value
         self.__consume(Token.THEN)
 
-        if self.__token.category != Token.UNSIGNEDINT:
+        if self.__token[0] != Token.UNSIGNEDINT:
             if saveval:
                 return FlowSignal(ftype=FlowSignal.EXECUTE)
         else:
@@ -1245,14 +1245,14 @@ class BASICParser:
                 return FlowSignal(ftarget=target)
 
         # advance to ELSE
-        while self.__tokenindex < len(self.__tokenlist) and self.__token.category != Token.ELSE:
+        while self.__tokenindex < len(self.__tokenlist) and self.__token[0] != Token.ELSE:
             self.__advance()
 
         # See if there is an ELSE part
-        if self.__token.category == Token.ELSE:
+        if self.__token[0] == Token.ELSE:
             self.__advance()
 
-            if self.__token.category != Token.UNSIGNEDINT:
+            if self.__token[0] != Token.UNSIGNEDINT:
                 return FlowSignal(ftype=FlowSignal.EXECUTE)
             else:
 
@@ -1279,7 +1279,7 @@ class BASICParser:
         self.__advance()  # Advance past FOR token
 
         # Process the loop variable initialisation
-        loop_variable = self.__token.lexeme  # Save lexeme of
+        loop_variable = self.__token[1]  # Save lexeme of
                                              # the current token
 
         if loop_variable.endswith('$'):
@@ -1371,7 +1371,7 @@ class BASICParser:
         self.__advance()  # Advance past NEXT token
 
         # Process the loop variable initialisation
-        loop_variable = self.__token.lexeme  # Save lexeme of
+        loop_variable = self.__token[1]  # Save lexeme of
                                              # the current token
 
         if loop_variable.endswith('$'):
@@ -1394,7 +1394,7 @@ class BASICParser:
         # Save result of expression
         saveval = self.__operand_stack.pop()
 
-        if self.__token.category == Token.GOTO:
+        if self.__token[0] == Token.GOTO:
             self.__consume(Token.GOTO)
             branchtype = 1
         else:
@@ -1407,7 +1407,7 @@ class BASICParser:
             self.__expr()
             branch_values.append(self.__operand_stack.pop())
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance()  # Advance past comma
                 self.__expr()
                 branch_values.append(self.__operand_stack.pop())
@@ -1427,10 +1427,11 @@ class BASICParser:
 
         # Since BASIC uses same operator for both
         # assignment and equality, we need to check for this
-        if self.__token.category == Token.ASSIGNOP:
-            self.__token.category = Token.EQUAL
-        if self.__token.category in self.__relexpr_map:
-            savecat = self.__token.category
+        if self.__token[0] == Token.ASSIGNOP:
+            self.__tokenlist[self.__tokenindex] = (Token.EQUAL, self.__token[1])
+            self.__token = self.__tokenlist[self.__tokenindex]
+        if self.__token[0] in self.__relexpr_map:
+            savecat = self.__token[0]
             self.__advance()
             self.__expr()
 
@@ -1443,8 +1444,8 @@ class BASICParser:
         """
         self.__notexpr()
 
-        while self.__token.category == Token.OR or self.__token.category == Token.AND:
-            savecat = self.__token.category
+        while self.__token[0] == Token.OR or self.__token[0] == Token.AND:
+            savecat = self.__token[0]
             self.__advance()
             self.__notexpr()
 
@@ -1460,7 +1461,7 @@ class BASICParser:
     def __notexpr(self):
         """Parses a logical not expression
         """
-        if self.__token.category == Token.NOT:
+        if self.__token[0] == Token.NOT:
             self.__advance()
             self.__relexpr()
             right = self.__operand_stack.pop()
@@ -1524,7 +1525,7 @@ class BASICParser:
             self.__expr()
             value_list = [self.__operand_stack.pop()]
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance() # Advance past comma
                 self.__expr()
                 value_list.append(self.__operand_stack.pop())
@@ -1544,7 +1545,7 @@ class BASICParser:
             self.__expr()
             value_list = [self.__operand_stack.pop()]
 
-            while self.__token.category == Token.COMMA:
+            while self.__token[0] == Token.COMMA:
                 self.__advance() # Advance past comma
                 self.__expr()
                 value_list.append(self.__operand_stack.pop())
@@ -1650,7 +1651,7 @@ class BASICParser:
             # Older basic dialets were always 1 based
             start = self.__operand_stack.pop() - 1
 
-            if self.__token.category == Token.COMMA:
+            if self.__token[0] == Token.COMMA:
                 self.__advance() # Advance past comma
                 self.__expr()
                 chars = self.__operand_stack.pop()
@@ -1684,13 +1685,13 @@ class BASICParser:
             needlestring = self.__operand_stack.pop()
 
             start = end = None
-            if self.__token.category == Token.COMMA:
+            if self.__token[0] == Token.COMMA:
                 self.__advance() # Advance past comma
                 self.__expr()
                 # Older basic dialets were always 1 based
                 start = self.__operand_stack.pop() -1
 
-                if self.__token.category == Token.COMMA:
+                if self.__token[0] == Token.COMMA:
                     self.__advance() # Advance past comma
                     self.__expr()
                     end = self.__operand_stack.pop() -1
